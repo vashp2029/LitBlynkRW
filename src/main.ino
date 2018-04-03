@@ -161,10 +161,69 @@ BLYNK_WRITE(AUTOSWITCHPIN){
 	}
 }
 
-BLYNK_WRITE(AUTOTIMEPIN){}
-BLYNK_WRITE(BRIGHTNESSPIN){}
-BLYNK_WRITE(MICPIN){}
-BLYNK_WRITE(SPEEDPIN){}
+//FIXIT I want this to automatically turn on the sunrise/sunset effect when the
+//FIXIT specified time hits, but can't do that until I write the loop function
+//FIXIT so come back and write this code. Keep in mind that once the time is set
+//FIXIT the Blynk app doesn't need to be running for this to trigger at the time.
+
+BLYNK_WRITE(AUTOTIMEPIN){
+	autoOnOffTime = param.asInt();
+}
+
+BLYNK_WRITE(BRIGHTNESSPIN){
+	DEBUG_PRINT("Moved 'BRIGHTNESSPIN' slider (V3) to: ");
+	DEBUG_PRINTLN(param.asInt());
+
+	if(selectedLedGroup == LEDGROUP){
+		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
+
+		brightness = param.asInt();
+
+		DEBUG_PRINT("Variable 'brightness' set to: ");
+		DEBUG_PRINTLN(brightness);
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
+}
+
+BLYNK_WRITE(MICPIN){
+	DEBUG_PRINT("Moved 'MICPIN' slider (V4) to: ");
+	DEBUG_PRINTLN(param.asInt());
+
+	if(selectedLedGroup == LEDGROUP){
+		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
+
+		micSensitivity = param.asInt();
+
+		DEBUG_PRINT("Variable 'micSensitivity' set to: ");
+		DEBUG_PRINTLN(micSensitivity);
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
+}
+
+BLYNK_WRITE(SPEEDPIN){
+	DEBUG_PRINT("Moved 'SPEEDPIN' slider (V5) to: ");
+	DEBUG_PRINTLN(param.asInt());
+
+	if(selectedLedGroup == LEDGROUP){
+		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
+
+		animationSpeed = param.asInt();
+
+		DEBUG_PRINT("Variable 'animationSpeed' set to: ");
+		DEBUG_PRINTLN(animationSpeed);
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
+}
+
 BLYNK_WRITE(EFFECTPIN){}
 BLYNK_WRITE(RGBPIN){}
 BLYNK_WRITE(ESPTIMEPIN){}
