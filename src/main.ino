@@ -131,7 +131,29 @@ BLYNK_WRITE(SWITCHPIN){
 	}
 }
 
+BLYNK_WRITE(AUTOSWITCHPIN){
+	DEBUG_PRINTLN("Toggled 'AUTOSWITCHPIN' (V2).");
 
+	//If this LED group is selected, toggle the 'autoOnOff' variable to match the state
+	//of this pin. Then stop the current effect and turn off the LEDs by setting 'onOff'
+	//to false.
+	if(selectedLedGroup == LEDGROUP){
+		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
+
+		autoOnOff = param.asInt();
+		stopCurrentEffect = true;
+
+		DEBUG_PRINT("Variable autoOnOff set to: ");
+		DEBUG_PRINTLN(autoOnOff);
+
+		//If LEDs are set to be turned on automatically, turn them off for now.
+		if(autoOnOff){
+			Blynk.virtualWrite(SWITCHPIN, OFF);
+			onOff = false;
+
+			DEBUG_PRINT("Variable 'onOff' set to: ");
+			DEBUG_PRINTLN(onOff);
+		}
 	}
 
 	else{
