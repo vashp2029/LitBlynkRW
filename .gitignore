@@ -27,6 +27,7 @@
 *.out
 *.app
 
+.ignore
 .pioenvs
 .piolibdeps
 .clang_complete
