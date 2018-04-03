@@ -100,7 +100,7 @@ BlynkParamAllocated ledGroupsList(128);
 //BLYNK INPUT FUNCTIONS                                                       //
 ////////////////////////////////////////////////////////////////////////////////
 BLYNK_WRITE(SWITCHPIN){
-	DEBUG_PRINTLN("Toggled 'SWITCHPIN' (V1): ");
+	DEBUG_PRINTLN("Toggled 'SWITCHPIN' (V1).");
 
 
 	//If this ESP is the one that is selected in the App (or all are selected),
@@ -108,19 +108,22 @@ BLYNK_WRITE(SWITCHPIN){
 	//value of 'stopCurrentEffect' to 'true' to kick the program out of the
 	//currently running effect loop.
 	if(selectedLedGroup == LEDGROUP){
-		DEBUG_PRINTLN("Accepting command: All groups selected or this group selected.");
+		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		onOff = param.asInt();
 		stopCurrentEffect = true;
+
+		DEBUG_PRINT("Variable 'onOff' toggled to: ");
+		DEBUG_PRINTLN(onOff);
 
 		//If the LEDs are turned on manually, turn of the auto-turn-on function.
 		if(onOff){
 			Blynk.virtualWrite(AUTOSWITCHPIN, OFF);
 			autoOnOff = false;
-		}
 
-		DEBUG_PRINT("Variable 'onOff' toggled to: ");
-		DEBUG_PRINTLN(onOff);
+			DEBUG_PRINT("Variable 'autoOnOff' set to: ");
+			DEBUG_PRINTLN(autoOnOff);
+		}
 	}
 
 	else{
@@ -128,7 +131,14 @@ BLYNK_WRITE(SWITCHPIN){
 	}
 }
 
-BLYNK_WRITE(AUTOSWITCHPIN){}
+
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
+}
+
 BLYNK_WRITE(AUTOTIMEPIN){}
 BLYNK_WRITE(BRIGHTNESSPIN){}
 BLYNK_WRITE(MICPIN){}
@@ -172,7 +182,7 @@ void addLedGroupsToList(){
 }
 
 void setupLeds(){
-	DEBUG_PRINTLN("Setting up LEDs. They should turn on when ready.");
+	DEBUG_PRINTLN("Setting up LEDs.");
 
 	animationSpeed 			= 0;
 	currentRed		= 255;
@@ -185,7 +195,7 @@ void setupLeds(){
 
 	set_max_power_in_volts_and_milliamps(MAXVOLTAGE, MAXAMPS);
 
-	DEBUG_PRINTLN("LED setup complete. If they didn't turn on, check wiring.");
+	DEBUG_PRINTLN("LED setup complete.");
 }
 
 void setupWiFi(){
