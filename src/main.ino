@@ -56,6 +56,9 @@
 #define MAXVOLTAGE		5
 #define MAXAMPS			900 //Units in milliamps
 
+#define ON 				1
+#define OFF 			0
+
 
 
 
@@ -94,6 +97,51 @@ BlynkParamAllocated ledGroupsList(128);
 
 
 ////////////////////////////////////////////////////////////////////////////////
+//BLYNK INPUT FUNCTIONS                                                       //
+////////////////////////////////////////////////////////////////////////////////
+BLYNK_WRITE(SWITCHPIN){
+	DEBUG_PRINTLN("Toggled 'SWITCHPIN' (V1): ");
+
+
+	//If this ESP is the one that is selected in the App (or all are selected),
+	//toggle variable 'onOff' to match the state of this pin. Then, set the
+	//value of 'stopCurrentEffect' to 'true' to kick the program out of the
+	//currently running effect loop.
+	if(selectedLedGroup == LEDGROUP){
+		DEBUG_PRINTLN("Accepting command: All groups selected or this group selected.");
+
+		onOff = param.asInt();
+		stopCurrentEffect = true;
+
+		//If the LEDs are turned on manually, turn of the auto-turn-on function.
+		if(onOff){
+			Blynk.virtualWrite(AUTOSWITCHPIN, OFF);
+			autoOnOff = false;
+		}
+
+		DEBUG_PRINT("Variable 'onOff' toggled to: ");
+		DEBUG_PRINTLN(onOff);
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
+}
+
+BLYNK_WRITE(AUTOSWITCHPIN){}
+BLYNK_WRITE(AUTOTIMEPIN){}
+BLYNK_WRITE(BRIGHTNESSPIN){}
+BLYNK_WRITE(MICPIN){}
+BLYNK_WRITE(SPEEDPIN){}
+BLYNK_WRITE(EFFECTPIN){}
+BLYNK_WRITE(RGBPIN){}
+BLYNK_WRITE(ESPTIMEPIN){}
+BLYNK_WRITE(GROUPPIN){}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 //SETUP FUNCTIONS                                                             //
 ////////////////////////////////////////////////////////////////////////////////
 //BEFOREUPLOAD Make sure all the effects are listed in the function below or
@@ -104,7 +152,7 @@ void addEffectsToList(){
 	effectsList.add("First effect");
 	effectsList.add("Second effect");
 
-	DEBUG_PRINTLN("Finished populating 'effectList.'");
+	DEBUG_PRINTLN("Finished populating 'effectList'.");
 }
 
 //BEFOREUPLOAD Make sure all the LED groups are listed in the function below or
@@ -113,7 +161,6 @@ void addLedGroupsToList(){
 	DEBUG_PRINTLN("Populating 'ledGroupList' with effects.");
 
 	ledGroupsList.add("All");
-	ledGroupsList.add("Test");
 	ledGroupsList.add("Bed");
 	ledGroupsList.add("Couch");
 	ledGroupsList.add("TV");
@@ -121,7 +168,7 @@ void addLedGroupsToList(){
 	ledGroupsList.add("Wall Desk");
 	ledGroupsList.add("Glass Desk");
 
-	DEBUG_PRINTLN("Finished populating 'ledGroupList.'");
+	DEBUG_PRINTLN("Finished populating 'ledGroupList'.");
 }
 
 void setupLeds(){
@@ -163,7 +210,7 @@ void setupBlynk(){
 
 	//Make sure to use Blynk.config instead of Blynk.begin, since the Wifi
 	//is being managed by WiFiManager.
-	Blynk.config(blynkAuth);
+	Blynk.config(BLYNKAUTH);
 
 	while(!Blynk.connect()){
 		DEBUG_PRINT(".");
@@ -175,11 +222,16 @@ void setupBlynk(){
 	//Once connected to blynk, download the current settings (this is in case
 	//there was an unexpected disconnect--the settings on the ESP will revert
 	//back to where they were before the disconnect).
-	DEBUG_PRINTLN("\nSuccessfully connected to Blynk, now downloading values.");
+	DEBUG_PRINTLN("\nSuccessfully connected to Blynk, now syncing values.");
+
+	Blynk.setProperty(GROUPPIN, "labels", ledGroupsList);
+	Blynk.setProperty(EFFECTPIN, "labels", effectsList);
+
+	DEBUG_PRINTLN("Sent group and effect list to Blynk. Check the drop-down menus.");
 
 	Blynk.syncAll();
 
-	DEBUG_PRINTLN("Finished downloading values.");
+	DEBUG_PRINTLN("Finished syncing values.");
 
 }
 
@@ -199,4 +251,6 @@ void setup(){
 	}
 }
 
-void loop(){}
+void loop(){
+	Blynk.run();
+}
