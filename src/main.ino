@@ -6,8 +6,7 @@
 #define BLYNK_PRINT Serial
 
 //BEFOREUPLOAD Uncomment the appropriate ESP and comment out the rest.
-#define TESTESP
-//#define BED
+#define BED
 //#define COUCH
 //#define TV
 //#define TVSTAND
@@ -38,6 +37,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //CONFIG                                                                      //
 ////////////////////////////////////////////////////////////////////////////////
+#define BLYNKAUTH		"48acb8cd05e645eebdef6d873f4e2262"
+
 #define SWITCHPIN 		V0 //On/off switch
 #define AUTOSWITCHPIN 	V1 //On/off for auto-turn-on LEDs at specified time
 #define AUTOTIMEPIN 	V2 //Time to auto-turn-on LEDs
@@ -47,7 +48,7 @@
 #define EFFECTPIN 		V6 //Effect selection drop-down menu
 #define RGBPIN 			V7 //ZeRGBa (set to "merge" in Blynk app)
 #define ESPTIMEPIN 		V8 //Update the Blynk app with current ESP time
-#define LCDPIN 			V9
+#define GROUPPIN		V9 //Select LED group to command individually
 
 #define DATAPIN			D5
 #define COLORORDER		RGB
@@ -82,7 +83,7 @@ struct CRGB leds[NUMLEDS];
 //When a command needs to be sent to only one set of LEDs, this variable is set
 //to the corresponding LED group from "SetSpecific.h." For global commands to
 //all the sets simultaneously, set "selectedLedGroup" equal to "LEDGROUP."
-uint8_t selectedLedGroup = 0;
+uint8_t selectedLedGroup = LEDGROUP;
 
 //This will store strings to be easily called later if needed for something like
 //the Blynk.setProperty function to populate a drop down menu in Blynk.
