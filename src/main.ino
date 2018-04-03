@@ -224,7 +224,28 @@ BLYNK_WRITE(SPEEDPIN){
 	}
 }
 
-BLYNK_WRITE(EFFECTPIN){}
+BLYNK_WRITE(EFFECTPIN){
+	DEBUG_PRINT("Selected new effect from drop-down menu (V6), effect number: ");
+	DEBUG_PRINTLN(param.asInt());
+
+	if(selectedLedGroup == LEDGROUP){
+		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
+
+		selectedEffect = param.asInt();
+		stopCurrentEffect = true;
+
+		DEBUG_PRINT("Variable 'selectedEffect' set to: ");
+		DEBUG_PRINTLN(selectedEffect);
+
+		DEBUG_PRINT("Variable 'stopCurrentEffect' set to: ");
+		DEBUG_PRINTLN(stopCurrentEffect);
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
+}
+
 BLYNK_WRITE(RGBPIN){}
 BLYNK_WRITE(ESPTIMEPIN){}
 BLYNK_WRITE(GROUPPIN){}
