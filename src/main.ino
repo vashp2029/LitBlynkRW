@@ -52,10 +52,10 @@
 #define PINCOUNT		10 //No. of pins for custom syncAll (to prevent crashing)
 
 #define DATAPIN			D5
-#define COLORORDER		RGB
+#define COLORORDER		GRB
 #define CHIPSET			WS2812B
 #define MAXVOLTAGE		5
-#define MAXAMPS			900 //Units in milliamps
+#define MAXAMPS			1200 //Units in milliamps
 
 #define ON 				1
 #define OFF 			0
@@ -179,7 +179,7 @@ BLYNK_WRITE(BRIGHTNESSPIN){
 	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
-		brightness = param.asInt();
+		brightness = map(param.asInt(), 0, 255, 0, 100);
 
 		DEBUG_PRINT("Variable 'brightness' set to: ");
 		DEBUG_PRINTLN(brightness);
@@ -458,4 +458,56 @@ void setup(){
 
 void loop(){
 	Blynk.run();
+
+	if(onOff && !autoOnOff){
+		solidColor();
+	}
+
+	else if(!onOff && autoOnOff){
+		everyOther();
+
+	}
+
+	else if(!onOff && !autoOnOff){
+		ledsOff();
+	}
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//EFFECTFUNCTIONS                                                             //
+////////////////////////////////////////////////////////////////////////////////
+void implementer(){
+	FastLED.show();
+	Blynk.run();
+}
+
+void ledsOff(){
+	FastLED.clear();
+	implementer();
+}
+
+void solidColor(){
+	FastLED.setBrightness(brightness);
+
+	CRGB rgbval(currentRed, currentGreen, currentBlue);
+	fill_solid(leds, NUMLEDS, rgbval);
+	
+	implementer();
+}
+
+void everyOther(){
+	FastLED.setBrightness(brightness);
+
+	CRGB rgbval(currentRed, currentGreen, currentBlue);
+
+	for(uint8_t i = 0; i < NUMLEDS; i++){
+		if(i % 2 == 0){
+			leds[i] = rgbval;
+		}
+	}
+
+	implementer();
 }
