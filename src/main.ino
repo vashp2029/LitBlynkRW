@@ -49,6 +49,7 @@
 #define RGBPIN 			V7 //ZeRGBa (set to "merge" in Blynk app)
 #define ESPTIMEPIN 		V8 //Update the Blynk app with current ESP time
 #define GROUPPIN		V9 //Select LED group to command individually
+#define PINCOUNT		10 //No. of pins for custom syncAll (to prevent crashing)
 
 #define DATAPIN			D5
 #define COLORORDER		RGB
@@ -340,8 +341,20 @@ void setupBlynk(){
 	Blynk.setProperty(EFFECTPIN, "labels", effectsList);
 
 	DEBUG_PRINTLN("Sent group and effect list to Blynk. Check the drop-down menus.");
+	DEBUG_PRINTLN("Syncing values of all pins from Blynk. This will take a few seconds.");
 
-	Blynk.syncAll();
+	//If you use a vanilla Blynk.syncAll() function here, the ESP may crash
+	//because of the flood of values. This function iterates from 0 to the
+	//number of pins as defined in the 'config' section, syncing one pin
+	//every 10 milliseconds.
+	for(uint8_t i = 0; i <= PINCOUNT; i++){
+		Blynk.syncVirtual(i);
+		delay(10);
+		Blynk.run();
+
+		DEBUG_PRINT("Obtain value for pin V");
+		DEBUG_PRINTLN(i);
+	}
 
 	DEBUG_PRINTLN("Finished syncing values.");
 
