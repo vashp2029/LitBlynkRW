@@ -289,6 +289,9 @@ BLYNK_WRITE(RGBPIN){
 //FIXIT for time from each ESP and then use #ifdef here to tell each ESP which
 //FIXIT pin to send their time to.
 BLYNK_READ(ESPTIMEPIN){
+	//If this group is selected (or all groups are selected), update the Blynk app
+	//with the current time. In the Blynk app, set this widget to pull an update every
+	//'x' seconds rather than 'push'. 
 	if(selectedLedGroup == LEDGROUP){
 		DEBUG_PRINTLN("Sending 'currentEspTime' to Blynk since this group or all groups are selected.");
 		
@@ -301,7 +304,29 @@ BLYNK_READ(ESPTIMEPIN){
 	}
 }
 
-BLYNK_WRITE(GROUPPIN){}
+BLYNK_WRITE(GROUPPIN){
+	//When a new group is selected, let all the ESPs know what the new selection is.
+	//Update the variable 'selectedLedGroup' with the new group selection. If the new
+	//selection is "1" (which is reserved as the value for "all groups"), set the var
+	//'selectedLedGroup' equal to 'LEDGROUP' so all ESPs will think they are the one
+	//that is selected.
+	DEBUG_PRINT("Selected new LED group from drop-down menu (V9), group number: ");
+	DEBUG_PRINTLN(param.asInt());
+
+	selectedLedGroup = param.asInt();
+
+	if(selectedLedGroup == 1){
+		selectedLedGroup = LEDGROUP;
+
+		DEBUG_PRINT("Selected all groups, so setting variable 'selectedLedGroup' to defined value of 'LEDGROUP':");
+		DEBUG_PRINTLN(selectedLedGroup);
+	}
+
+	else{
+		DEBUG_PRINT("The new LED group selection is the same as before, which was: ");
+		DEBUG_PRINTLN(selectedLedGroup);
+	}
+}
 
 
 
