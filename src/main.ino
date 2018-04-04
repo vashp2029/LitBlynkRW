@@ -71,6 +71,7 @@ bool autoOnOff; //True = LEDs will automatically turn on at specified time
 bool autoOnOffTime; //True = Time set for LEDs to turn on automatically
 bool effectChange; //True = Effect was changed since last loop
 bool stopCurrentEffect; //True = Stop current effect to load new paramenters
+bool globalLedSelection; //True = all led groups selected
 
 uint8_t selectedEffect = 0; //Store currently selected effect from Blynk
 uint8_t brightness = 0; //Range is 0-255
@@ -86,7 +87,7 @@ struct CRGB leds[NUMLEDS];
 
 //When a command needs to be sent to only one set of LEDs, this variable is set
 //to the corresponding LED group from "SetSpecific.h." For global commands to
-//all the sets simultaneously, set "selectedLedGroup" equal to "LEDGROUP."
+//all the sets simultaneously, set 'globalLedSelection' to 'true'.
 uint8_t selectedLedGroup = LEDGROUP;
 
 //This will store strings to be easily called later if needed for something like
@@ -108,7 +109,7 @@ BLYNK_WRITE(SWITCHPIN){
 	//toggle variable 'onOff' to match the state of this pin. Then, set the
 	//value of 'stopCurrentEffect' to 'true' to kick the program out of the
 	//currently running effect loop.
-	if(selectedLedGroup == LEDGROUP){
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		onOff = param.asInt();
@@ -138,7 +139,7 @@ BLYNK_WRITE(AUTOSWITCHPIN){
 	//If this LED group is selected, toggle the 'autoOnOff' variable to match the state
 	//of this pin. Then stop the current effect and turn off the LEDs by setting 'onOff'
 	//to false.
-	if(selectedLedGroup == LEDGROUP){
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		autoOnOff = param.asInt();
@@ -175,7 +176,7 @@ BLYNK_WRITE(BRIGHTNESSPIN){
 	DEBUG_PRINT("Moved 'BRIGHTNESSPIN' slider (V3) to: ");
 	DEBUG_PRINTLN(param.asInt());
 
-	if(selectedLedGroup == LEDGROUP){
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		brightness = param.asInt();
@@ -193,7 +194,7 @@ BLYNK_WRITE(MICPIN){
 	DEBUG_PRINT("Moved 'MICPIN' slider (V4) to: ");
 	DEBUG_PRINTLN(param.asInt());
 
-	if(selectedLedGroup == LEDGROUP){
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		micSensitivity = param.asInt();
@@ -211,7 +212,7 @@ BLYNK_WRITE(SPEEDPIN){
 	DEBUG_PRINT("Moved 'SPEEDPIN' slider (V5) to: ");
 	DEBUG_PRINTLN(param.asInt());
 
-	if(selectedLedGroup == LEDGROUP){
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		animationSpeed = param.asInt();
@@ -229,7 +230,7 @@ BLYNK_WRITE(EFFECTPIN){
 	DEBUG_PRINT("Selected new effect from drop-down menu (V6), effect number: ");
 	DEBUG_PRINTLN(param.asInt());
 
-	if(selectedLedGroup == LEDGROUP){
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		selectedEffect = param.asInt();
@@ -256,7 +257,7 @@ BLYNK_WRITE(RGBPIN){
 	DEBUG_PRINT(", Blue: ");
 	DEBUG_PRINTLN(param[2].asInt());
 
-	if(selectedLedGroup == LEDGROUP){
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		currentRed = param[0].asInt();
@@ -287,12 +288,13 @@ BLYNK_WRITE(RGBPIN){
 //FIXIT This is going to cause all the ESPs to flood Blynk with their respective
 //FIXIT currentTime which may be useless. Instead, create a different pin/widget
 //FIXIT for time from each ESP and then use #ifdef here to tell each ESP which
-//FIXIT pin to send their time to.
+//FIXIT pin to send their time to. The other option is to get rid of this function
+//FIXIT completely, as it doesn't do anything useful, just displays the current time.
 BLYNK_READ(ESPTIMEPIN){
-	//If this group is selected (or all groups are selected), update the Blynk app
+	//If this group is selected (and global selection is off), update the Blynk app
 	//with the current time. In the Blynk app, set this widget to pull an update every
 	//'x' seconds rather than 'push'. 
-	if(selectedLedGroup == LEDGROUP){
+	if(selectedLedGroup == LEDGROUP && globalLedSelection != true){
 		DEBUG_PRINTLN("Sending 'currentEspTime' to Blynk since this group or all groups are selected.");
 		
 		String timeString = String(hour()) + ":" + String(minute()) + ":" +  String(second());
@@ -307,22 +309,29 @@ BLYNK_READ(ESPTIMEPIN){
 BLYNK_WRITE(GROUPPIN){
 	//When a new group is selected, let all the ESPs know what the new selection is.
 	//Update the variable 'selectedLedGroup' with the new group selection. If the new
-	//selection is "1" (which is reserved as the value for "all groups"), set the var
-	//'selectedLedGroup' equal to 'LEDGROUP' so all ESPs will think they are the one
-	//that is selected.
+	//selection is "1" (which is reserved as the value for "all groups"), set the bool
+	//'globalLedSelection' equal to 'true'.
 	DEBUG_PRINT("Selected new LED group from drop-down menu (V9), group number: ");
 	DEBUG_PRINTLN(param.asInt());
 
 	selectedLedGroup = param.asInt();
 
-	if(selectedLedGroup == 1){
-		selectedLedGroup = LEDGROUP;
+	DEBUG_PRINT("Updated variable 'selectedLedGroup; to group number: ");
+	DEBUG_PRINTLN(selectedLedGroup);
 
-		DEBUG_PRINT("Selected all groups, so setting variable 'selectedLedGroup' to defined value of 'LEDGROUP':");
-		DEBUG_PRINTLN(selectedLedGroup);
+	if(selectedLedGroup == 1){
+		globalLedSelection = true;
+
+		DEBUG_PRINT("Selected all groups, so setting variable 'globalLedSelction' to 'true': ");
+		DEBUG_PRINTLN(globalLedSelection);
 	}
 
 	else{
+		globalLedSelection = false;
+
+		DEBUG_PRINT("Since a specific group was selected, globalLedSelection was set to 'false':");
+		DEBUG_PRINTLN(globalLedSelection);
+		
 		DEBUG_PRINT("The new LED group selection is the same as before, which was: ");
 		DEBUG_PRINTLN(selectedLedGroup);
 	}
