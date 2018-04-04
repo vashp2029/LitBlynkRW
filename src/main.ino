@@ -284,12 +284,6 @@ BLYNK_WRITE(RGBPIN){
 	}
 }
 
-
-//FIXIT This is going to cause all the ESPs to flood Blynk with their respective
-//FIXIT currentTime which may be useless. Instead, create a different pin/widget
-//FIXIT for time from each ESP and then use #ifdef here to tell each ESP which
-//FIXIT pin to send their time to. The other option is to get rid of this function
-//FIXIT completely, as it doesn't do anything useful, just displays the current time.
 BLYNK_READ(ESPTIMEPIN){
 	//If this group is selected (and global selection is off), update the Blynk app
 	//with the current time. In the Blynk app, set this widget to pull an update every
@@ -331,7 +325,7 @@ BLYNK_WRITE(GROUPPIN){
 
 		DEBUG_PRINT("Since a specific group was selected, globalLedSelection was set to 'false':");
 		DEBUG_PRINTLN(globalLedSelection);
-		
+
 		DEBUG_PRINT("The new LED group selection is the same as before, which was: ");
 		DEBUG_PRINTLN(selectedLedGroup);
 	}
