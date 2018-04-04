@@ -283,7 +283,24 @@ BLYNK_WRITE(RGBPIN){
 	}
 }
 
-BLYNK_WRITE(ESPTIMEPIN){}
+
+//FIXIT This is going to cause all the ESPs to flood Blynk with their respective
+//FIXIT currentTime which may be useless. Instead, create a different pin/widget
+//FIXIT for time from each ESP and then use #ifdef here to tell each ESP which
+//FIXIT pin to send their time to.
+BLYNK_READ(ESPTIMEPIN){
+	if(selectedLedGroup == LEDGROUP){
+		DEBUG_PRINTLN("Sending 'currentEspTime' to Blynk since this group or all groups are selected.");
+		
+		String timeString = String(hour()) + ":" + String(minute()) + ":" +  String(second());
+		Blynk.virtualWrite(ESPTIMEPIN, timeString);
+	}
+
+	else{
+		DEBUG_PRINTLN("Not sending 'currentEspTime' to Blynk since this group is not selected.");
+	}
+}
+
 BLYNK_WRITE(GROUPPIN){}
 
 
