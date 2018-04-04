@@ -247,7 +247,42 @@ BLYNK_WRITE(EFFECTPIN){
 	}
 }
 
-BLYNK_WRITE(RGBPIN){}
+BLYNK_WRITE(RGBPIN){
+	DEBUG_PRINTLN("Changed RGB values on 'RGBPIN' (V7) to: ");
+	DEBUG_PRINT("Red: ");
+	DEBUG_PRINT(param[0].asInt());
+	DEBUG_PRINT(", Green: ");
+	DEBUG_PRINT(param[1].asInt());
+	DEBUG_PRINT(", Blue: ");
+	DEBUG_PRINTLN(param[2].asInt());
+
+	if(selectedLedGroup == LEDGROUP){
+		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
+
+		currentRed = param[0].asInt();
+		currentGreen = param[1].asInt();
+		currentBlue = param[2].asInt();
+
+		stopCurrentEffect = true;
+
+		DEBUG_PRINT("Variable 'stopCurrentEffect' set to: ");
+		DEBUG_PRINTLN(stopCurrentEffect);
+
+		DEBUG_PRINTLN("Set variables 'currentRed', 'currentGreen', and 'currentBlue' to: ");
+		DEBUG_PRINT("Red: ");
+		DEBUG_PRINT(currentRed);
+		DEBUG_PRINT(", Green: ");
+		DEBUG_PRINT(currentGreen);
+		DEBUG_PRINT(", Blue: ");
+		DEBUG_PRINTLN(currentBlue);
+
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
+}
+
 BLYNK_WRITE(ESPTIMEPIN){}
 BLYNK_WRITE(GROUPPIN){}
 
