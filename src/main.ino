@@ -464,8 +464,9 @@ void loop(){
 	}
 
 	else if(!onOff && autoOnOff){
-		everyOther();
-
+		if(autoOnOffTime){
+			everyOther();
+		}
 	}
 
 	else if(!onOff && !autoOnOff){
