@@ -96,6 +96,7 @@ unsigned long autoStartTimeInEpoch; //Time to auto turn on LEDs in EPOCH
 unsigned long autoStopTimeInEpoch; 	//Time to auto turn off LEDs in EPOCH
 
 WidgetRTC clock;
+BlynkTimer updateTime;
 Dusk2Dawn atlantaSun(LATITUDE, LONGITUDE, TIMEZONE);
 WiFiManager wifiManager;
 struct CRGB leds[NUMLEDS];
@@ -157,7 +158,6 @@ void getSunTime(){
 BLYNK_WRITE(SWITCHPIN){
 	DEBUG_PRINTLN("Toggled 'SWITCHPIN' (V1).");
 
-
 	//If this ESP is the one that is selected in the App (or all are selected),
 	//toggle variable 'onOff' to match the state of this pin. Then, set the
 	//value of 'stopCurrentEffect' to 'true' to kick the program out of the
@@ -170,15 +170,6 @@ BLYNK_WRITE(SWITCHPIN){
 
 		DEBUG_PRINT("Variable 'onOff' toggled to: ");
 		DEBUG_PRINTLN(onOff);
-
-		//If the LEDs are turned on manually, turn of the auto-turn-on function.
-		if(onOff){
-			Blynk.virtualWrite(AUTOSWITCHPIN, OFF);
-			autoOnOff = false;
-
-			DEBUG_PRINT("Variable 'autoOnOff' set to: ");
-			DEBUG_PRINTLN(autoOnOff);
-		}
 	}
 
 	else{
@@ -196,19 +187,10 @@ BLYNK_WRITE(AUTOSWITCHPIN){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		autoOnOff = param.asInt();
-		stopCurrentEffect = true;
 
-		DEBUG_PRINT("Variable autoOnOff set to: ");
-		DEBUG_PRINTLN(autoOnOff);
-
-		//If LEDs are set to be turned on automatically, turn them off for now.
-		if(autoOnOff){
-			Blynk.virtualWrite(SWITCHPIN, OFF);
-			onOff = false;
-
-			DEBUG_PRINT("Variable 'onOff' set to: ");
-			DEBUG_PRINTLN(onOff);
-		}
+		//When the auto on/off switch is flipped, pull the time for auto start and 
+		//auto stop from the 'AUTOTIMEPIN' (Time Input Widget). 
+		Blynk.syncVirtual(AUTOTIMEPIN);
 	}
 
 	else{
@@ -222,7 +204,77 @@ BLYNK_WRITE(AUTOSWITCHPIN){
 //FIXIT the Blynk app doesn't need to be running for this to trigger at the time.
 
 BLYNK_WRITE(AUTOTIMEPIN){
-	autoOnOffTime = param.asInt();
+	DEBUG_PRINTLN("Set new start/stop time for automatic operation.");
+
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
+		getSunTime();
+
+		//Only set the start times and stop times if the auto on/off switch is turned on.
+		if(autoOnOff){
+			DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
+
+			//The time this command was received in EPOCH.
+			commandTimeInEpoch = now();
+
+			DEBUG_PRINT("The command to turn LEDs on/off automatically was recieved at (EPOCH time): ");
+			DEBUG_PRINTLN(commandTimeInEpoch);
+
+			//If a start time and stop time are defined, store the time value (in seconds from)
+			//midnight in the variables 'autoStartTimeInEpoch' and 'autoStopTimeInEpoch'.
+			TimeInputParam t(param);
+
+			if(t.hasStartTime() || t.hasStopTime()){
+
+				//The start and stop times in EPOCH.
+				autoStartTimeInEpoch = midnightInEpoch + (t.getStartHour() * 3600) + (t.getStartMinute() * 60);
+				autoStopTimeInEpoch = midnightInEpoch + (t.getStopHour() * 3600) + (t.getStopMinute() * 60);
+
+				DEBUG_PRINT("The LEDs are set to automatically turn on at EPOCH time: ");
+				DEBUG_PRINTLN(autoStartTimeInEpoch);
+
+				DEBUG_PRINT("The LEDs are set to automatically turn off at EPOCH time: ");
+				DEBUG_PRINTLN(autoStopTimeInEpoch);
+			}
+
+			//If sunrise/sunset are selected in the Blynk time input widget, figure out when today's
+			//sunrise/senset occur, and set autoStartTimeInEpoch and autoStopTimeInEpoch accordingly.
+			if(t.isStartSunrise()){
+				getSunTime();
+				autoStartTimeInEpoch = sunriseInEpoch;
+
+				DEBUG_PRINT("The start time is set to 'sunrise' which will occur at (EPOCH time): ");
+				DEBUG_PRINTLN(autoStartTimeInEpoch);
+			}
+
+			if(t.isStopSunrise()){
+				getSunTime();
+				autoStopTimeInEpoch = sunriseInEpoch;
+
+				DEBUG_PRINT("The stop time is set to 'sunrise' which will occur at (EPOCH time): ");
+				DEBUG_PRINTLN(autoStopTimeInEpoch);
+			}
+
+			if(t.isStartSunset()){
+				getSunTime();
+				autoStartTimeInEpoch = sunsetInEpoch;
+
+				DEBUG_PRINT("The start time is set to 'sunset' which will occur at (EPOCH time): ");
+				DEBUG_PRINTLN(autoStartTimeInEpoch);
+			}
+
+			if(t.isStopSunset()){
+				getSunTime();
+				autoStopTimeInEpoch = sunsetInEpoch;
+
+				DEBUG_PRINT("The stop time is set to 'sunset' which will occur at (EPOCH time): ");
+				DEBUG_PRINTLN(autoStopTimeInEpoch);
+			}
+		}
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
 }
 
 BLYNK_WRITE(BRIGHTNESSPIN){
@@ -376,10 +428,10 @@ BLYNK_WRITE(GROUPPIN){
 	else{
 		globalLedSelection = false;
 
-		DEBUG_PRINT("Since a specific group was selected, globalLedSelection was set to 'false':");
+		DEBUG_PRINT("Since a specific group was selected, globalLedSelection was set to: ");
 		DEBUG_PRINTLN(globalLedSelection);
 
-		DEBUG_PRINT("The new LED group selection is the same as before, which was: ");
+		DEBUG_PRINT("The new LED group selection is: ");
 		DEBUG_PRINTLN(selectedLedGroup);
 	}
 }
@@ -395,8 +447,8 @@ BLYNK_WRITE(GROUPPIN){
 void addEffectsToList(){
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
-	effectsList.add("First effect");
-	effectsList.add("Second effect");
+	effectsList.add("Sunrise/Sunset");
+	effectsList.add("Solid Color");
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
 }
@@ -465,6 +517,9 @@ void setupBlynk(){
 
 	clock.begin();
 
+	//Every 10 seconds, update the time by running the 'getMyTime' function.
+	updateTime.setInterval(10000L, getMyTime);
+
 	//Once connected to blynk, download the current settings (this is in case
 	//there was an unexpected disconnect--the settings on the ESP will revert
 	//back to where they were before the disconnect).
@@ -517,19 +572,32 @@ void setup(){
 
 void loop(){
 	Blynk.run();
+	updateTime.run();
 
-	if(onOff && !autoOnOff){
-		solidColor();
-	}
+	if(autoOnOff){
 
-	else if(!onOff && autoOnOff){
-		if(autoOnOffTime){
-			everyOther();
+		//If the auto on/off switch was flipped before the LEDs are meant to be on,
+		//start polling for time. Then, when the current time is
+		//in between the auto start time and auto stop time, flip the manual
+		//'SWITCH' to the 'on' position to turn on LEDs. When the current time passes
+		//the auto stop time, flip the 'SWITCH' to 'off'.
+		if(commandTimeInEpoch < autoStartTimeInEpoch){
+			if(currentTimeInEpoch >= autoStartTimeInEpoch && currentTimeInEpoch <= autoStopTimeInEpoch){
+				Blynk.virtualWrite(SWITCHPIN, ON);
+			}
+			else{
+				Blynk.virtualWrite(SWITCHPIN, OFF);
+			}
 		}
-	}
 
-	else if(!onOff && !autoOnOff){
-		ledsOff();
+		//If the auto on/off switch was flipped after the LEDs were already meant
+		//to be on, then when the current time passes the auto stop time, turn off
+		//the LEDs.
+		else{
+			if(currentTimeInEpoch > autoStopTimeInEpoch){
+				Blynk.virtualWrite(SWITCHPIN, OFF);
+			}
+		}
 	}
 }
 
