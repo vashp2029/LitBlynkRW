@@ -198,11 +198,6 @@ BLYNK_WRITE(AUTOSWITCHPIN){
 	}
 }
 
-//FIXIT I want this to automatically turn on the sunrise/sunset effect when the
-//FIXIT specified time hits, but can't do that until I write the loop function
-//FIXIT so come back and write this code. Keep in mind that once the time is set
-//FIXIT the Blynk app doesn't need to be running for this to trigger at the time.
-
 BLYNK_WRITE(AUTOTIMEPIN){
 	DEBUG_PRINTLN("Set new start/stop time for automatic operation.");
 
