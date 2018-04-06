@@ -26,6 +26,7 @@
 #include "WiFiManager.h"
 #include "BlynkSimpleEsp8266.h"
 #include "TimeLib.h"
+#include "Dusk2Dawn.h"
 #include "WidgetRTC.h"
 #include "FastLED.h"
 #include "Debug.h"
@@ -39,26 +40,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 #define BLYNKAUTH		"48acb8cd05e645eebdef6d873f4e2262"
 
-#define SWITCHPIN 		V0 //On/off switch
-#define AUTOSWITCHPIN 	V1 //On/off for auto-turn-on LEDs at specified time
-#define AUTOTIMEPIN 	V2 //Time to auto-turn-on LEDs
-#define BRIGHTNESSPIN 	V3 //Brightness slider (range 0-255 in Blynk app)
-#define MICPIN 			V4 //Mic sensitivity (range 0-255 in Blynk app)
-#define SPEEDPIN 		V5 //Animation speed (range 0-255 in Blynk app)
-#define EFFECTPIN 		V6 //Effect selection drop-down menu
-#define RGBPIN 			V7 //ZeRGBa (set to "merge" in Blynk app)
-#define ESPTIMEPIN 		V8 //Update the Blynk app with current ESP time
-#define GROUPPIN		V9 //Select LED group to command individually
-#define PINCOUNT		10 //No. of pins for custom syncAll (to prevent crashing)
+#define GROUPPIN		V0 			//Select LED group to command individually
+#define SWITCHPIN 		V1 			//On/off switch
+#define AUTOSWITCHPIN 	V2 			//On/off for auto-turn-on LEDs at specified time
+#define BRIGHTNESSPIN 	V3 			//Brightness slider (range 0-255 in Blynk app)
+#define MICPIN 			V4 			//Mic sensitivity (range 0-255 in Blynk app)
+#define SPEEDPIN 		V5 			//Animation speed (range 0-255 in Blynk app)
+#define EFFECTPIN 		V6 			//Effect selection drop-down menu
+#define RGBPIN 			V7 			//ZeRGBa (set to "merge" in Blynk app)
+#define ESPTIMEPIN 		V8 			//Update the Blynk app with current ESP time
+#define AUTOTIMEPIN 	V9 			//Time to auto-turn-on LEDs
+#define PINCOUNT		10 			//No. of pins for custom syncAll (to prevent crashing)
 
 #define DATAPIN			D5
 #define COLORORDER		GRB
 #define CHIPSET			WS2812B
 #define MAXVOLTAGE		5
-#define MAXAMPS			1200 //Units in milliamps
+#define MAXAMPS			1200 		//Units in milliamps
 
 #define ON 				1
 #define OFF 			0
+
+#define LATITUDE		34.051490 	//For sunrise/sunset functions
+#define LONGITUDE		-84.071300 	//For sunrise/sunset functions
+#define TIMEZONE		-5 			//For sunrise/sunset functions
 
 
 
@@ -66,34 +71,82 @@
 ////////////////////////////////////////////////////////////////////////////////
 //GLOBAL VARIABLES                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-bool onOff; //True = LEDs on
-bool autoOnOff; //True = LEDs will automatically turn on at specified time
-bool autoOnOffTime; //True = Time set for LEDs to turn on automatically
-bool effectChange; //True = Effect was changed since last loop
-bool stopCurrentEffect; //True = Stop current effect to load new paramenters
-bool globalLedSelection; //True = all led groups selected
+bool onOff; 						//True = LEDs on
+bool autoOnOff; 					//True = LEDs will automatically turn on at specified time
+bool effectChange; 					//True = Effect was changed since last loop
+bool stopCurrentEffect; 			//True = Stop current effect to load new paramenters
+bool globalLedSelection; 			//True = all led groups selected
+bool dst;							//True = Daylight savings time is in effect
 
-uint8_t selectedEffect = 0; //Store currently selected effect from Blynk
-uint8_t brightness = 0; //Range is 0-255
-uint8_t micSensitivity = 0; //Range is 0-255
-uint8_t animationSpeed = 0; //Range is 0-255
-uint8_t currentRed = 0; //Range is 0-255
-uint8_t currentGreen = 0; //Range is 0-255
-uint8_t currentBlue = 0; //Range is 0-255
+uint8_t selectedEffect = 0; 		//Store currently selected effect from Blynk
+uint8_t selectedLedGroup = LEDGROUP;//Tells all ESPs which group should respond to command
+uint8_t brightness = 0; 			//Range is 0-255
+uint8_t micSensitivity = 0; 		//Range is 0-255
+uint8_t animationSpeed = 0; 		//Range is 0-255
+uint8_t currentRed = 0; 			//Range is 0-255
+uint8_t currentGreen = 0; 			//Range is 0-255
+uint8_t currentBlue = 0; 			//Range is 0-255
+
+unsigned long currentTimeInEpoch; 	//Current time in EPOCH
+unsigned long midnightInEpoch; 		//EPOCH time at prior midnight
+unsigned long sunriseInEpoch; 		//Today's sunrise time in EPOCH
+unsigned long sunsetInEpoch; 		//Today's sunset time in EPOCH
+unsigned long commandTimeInEpoch; 	//Time a command is received in EPOCH
+unsigned long autoStartTimeInEpoch; //Time to auto turn on LEDs in EPOCH
+unsigned long autoStopTimeInEpoch; 	//Time to auto turn off LEDs in EPOCH
 
 WidgetRTC clock;
+Dusk2Dawn atlantaSun(LATITUDE, LONGITUDE, TIMEZONE);
 WiFiManager wifiManager;
 struct CRGB leds[NUMLEDS];
-
-//When a command needs to be sent to only one set of LEDs, this variable is set
-//to the corresponding LED group from "SetSpecific.h." For global commands to
-//all the sets simultaneously, set 'globalLedSelection' to 'true'.
-uint8_t selectedLedGroup = LEDGROUP;
 
 //This will store strings to be easily called later if needed for something like
 //the Blynk.setProperty function to populate a drop down menu in Blynk.
 BlynkParamAllocated effectsList(512);
 BlynkParamAllocated ledGroupsList(128);
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//TIME FUNCTIONS                                                              //
+////////////////////////////////////////////////////////////////////////////////
+void getMyTime(){
+	uint8_t myHour 		= hour();
+	uint8_t myMinute 	= minute();
+	uint8_t mySecond 	= second();
+
+	unsigned long currentTime = (myHour * 3600) + (myMinute * 60) + (mySecond);
+
+	currentTimeInEpoch = now();
+
+	midnightInEpoch = currentTimeInEpoch - currentTime;
+
+	DEBUG_PRINTLN(String("The current time in EPOCH is: ") + currentTimeInEpoch);
+	DEBUG_PRINTLN(String("Midnight in EPOCH occured at : ") + midnightInEpoch);
+}
+
+void getSunTime(){
+	getMyTime();
+
+	uint16_t myYear 	= year();
+	uint8_t myMonth 	= month();
+	uint8_t myDay	 	= day();
+
+	if(myMonth >= 3 && myMonth <= 10){
+		dst = true;
+	}
+
+	else{
+		dst = false;
+	}
+
+	sunriseInEpoch = (atlantaSun.sunrise(myYear, myMonth, myDay, dst) * 60) + midnightInEpoch;
+	sunsetInEpoch = (atlantaSun.sunset(myYear, myMonth, myDay, dst) * 60) + midnightInEpoch;
+
+	DEBUG_PRINTLN(String("Sunrise today will occur at (in EPOCH): ") + sunriseInEpoch);
+	DEBUG_PRINTLN(String("Sunset today will occur at (in EPOCH): ") + sunsetInEpoch);
+}
 
 
 
@@ -442,6 +495,10 @@ void setupBlynk(){
 
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+//MAIN PROGRAM                                                                //
+////////////////////////////////////////////////////////////////////////////////
 void setup(){
 	DEBUG_BEGIN(115200);
 
@@ -453,8 +510,10 @@ void setup(){
 		addEffectsToList();
 		setupLeds();
 		setupBlynk();
+		getSunTime();
 	}
 }
+
 
 void loop(){
 	Blynk.run();
@@ -478,7 +537,7 @@ void loop(){
 
 
 ////////////////////////////////////////////////////////////////////////////////
-//EFFECTFUNCTIONS                                                             //
+//EFFECT FUNCTIONS                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 void implementer(){
 	FastLED.show();
