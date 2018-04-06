@@ -574,6 +574,9 @@ void loop(){
 	Blynk.run();
 	updateTime.run();
 
+	stopCurrentEffect = false;
+
+	//If the lights are meant to be turned on/off automatically, run this loop.
 	if(autoOnOff){
 
 		//If the auto on/off switch was flipped before the LEDs are meant to be on,
@@ -599,6 +602,24 @@ void loop(){
 			}
 		}
 	}
+
+	//If the lights are turned on, run this loop.
+	//BEFOREUPLOAD Make sure all the functions are implemented in this
+	//BEFOREUPLOAD switch statement.
+	if(onOff){
+		switch(selectedEffect){
+			case 1:
+				sunriseSunset();
+				break;
+			case 2:
+				solidColor();
+				break;
+		}
+	}
+
+	else if(!onOff){
+		ledsOff();
+	}
 }
 
 
@@ -607,9 +628,21 @@ void loop(){
 ////////////////////////////////////////////////////////////////////////////////
 //EFFECT FUNCTIONS                                                            //
 ////////////////////////////////////////////////////////////////////////////////
+//This function must be called in ALL effects for the program to keep running.
+//This is what will populate the LEDs with the given effect so don't use
+//FastLED.show() in the effect functions themselves. This is also going to keep
+//the time updated and keep Blynk running to accept commands.
 void implementer(){
 	FastLED.show();
 	Blynk.run();
+	updateTime.run();
+
+	//If a command is received which requires a change of effect, kill the current
+	//effect.
+	if(stopCurrentEffect){
+		FastLED.clear();
+		return;
+	}
 }
 
 void ledsOff(){
@@ -626,16 +659,6 @@ void solidColor(){
 	implementer();
 }
 
-void everyOther(){
-	FastLED.setBrightness(brightness);
-
-	CRGB rgbval(currentRed, currentGreen, currentBlue);
-
-	for(uint8_t i = 0; i < NUMLEDS; i++){
-		if(i % 2 == 0){
-			leds[i] = rgbval;
-		}
-	}
-
+void sunriseSunset(){
 	implementer();
 }
