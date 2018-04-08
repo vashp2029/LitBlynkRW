@@ -47,10 +47,11 @@
 #define MICPIN 			V4 			//Mic sensitivity (range 0-255 in Blynk app)
 #define SPEEDPIN 		V5 			//Animation speed (range 0-255 in Blynk app)
 #define EFFECTPIN 		V6 			//Effect selection drop-down menu
-#define RGBPIN 			V7 			//ZeRGBa (set to "merge" in Blynk app)
-#define ESPTIMEPIN 		V8 			//Update the Blynk app with current ESP time
-#define AUTOTIMEPIN 	V9 			//Time to auto-turn-on LEDs
-#define PINCOUNT		10 			//No. of pins for custom syncAll (to prevent crashing)
+#define SOUNDEFFECTPIN	V7 			//Sound effect selection drop-down menu
+#define RGBPIN 			V8 			//ZeRGBa (set to "merge" in Blynk app)
+#define ESPTIMEPIN 		V9 			//Update the Blynk app with current ESP time
+#define AUTOTIMEPIN 	V10			//Time to auto-turn-on LEDs
+#define PINCOUNT		11 			//No. of pins for custom syncAll (to prevent crashing)
 
 #define DATAPIN			D5
 #define COLORORDER		GRB
@@ -73,12 +74,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 bool onOff; 						//True = LEDs on
 bool autoOnOff; 					//True = LEDs will automatically turn on at specified time
-bool effectChange; 					//True = Effect was changed since last loop
 bool stopCurrentEffect; 			//True = Stop current effect to load new paramenters
 bool globalLedSelection; 			//True = all led groups selected
 bool dst;							//True = Daylight savings time is in effect
 
 uint8_t selectedEffect = 0; 		//Store currently selected effect from Blynk
+uint8_t selectedSoundEffect = 0;	//Store currently selected effect from Blynk
 uint8_t selectedLedGroup = LEDGROUP;//Tells all ESPs which group should respond to command
 uint8_t brightness = 0; 			//Range is 0-255
 uint8_t micSensitivity = 0; 		//Range is 0-255
@@ -87,6 +88,7 @@ uint8_t currentRed = 0; 			//Range is 0-255
 uint8_t currentGreen = 0; 			//Range is 0-255
 uint8_t currentBlue = 0; 			//Range is 0-255
 
+unsigned long currentMillis;		//Time elapsed since program began
 unsigned long currentTimeInEpoch; 	//Current time in EPOCH
 unsigned long midnightInEpoch; 		//EPOCH time at prior midnight
 unsigned long sunriseInEpoch; 		//Today's sunrise time in EPOCH
@@ -104,6 +106,7 @@ struct CRGB leds[NUMLEDS];
 //This will store strings to be easily called later if needed for something like
 //the Blynk.setProperty function to populate a drop down menu in Blynk.
 BlynkParamAllocated effectsList(512);
+BlynkParamAllocated soundEffectsList(512);
 BlynkParamAllocated ledGroupsList(128);
 
 
@@ -336,6 +339,40 @@ BLYNK_WRITE(EFFECTPIN){
 		selectedEffect = param.asInt();
 		stopCurrentEffect = true;
 
+		Blynk.virtualWrite(SOUNDEFFECTPIN, 0);
+		selectedSoundEffect = 0;
+
+		DEBUG_PRINT("Variable 'selectedEffect' set to: ");
+		DEBUG_PRINTLN(selectedEffect);
+
+		DEBUG_PRINT("Variable 'selectedSoundEffect' set to: ");
+		DEBUG_PRINTLN(selectedSoundEffect);
+
+		DEBUG_PRINT("Variable 'stopCurrentEffect' set to: ");
+		DEBUG_PRINTLN(stopCurrentEffect);
+	}
+
+	else{
+		DEBUG_PRINTLN("Not accepting command: this group is not selected.");
+	}
+}
+
+BLYNK_WRITE(SOUNDEFFECTPIN){
+	DEBUG_PRINT("Selected new effect from drop-down menu (V6), effect number: ");
+	DEBUG_PRINTLN(param.asInt());
+
+	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
+		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
+
+		selectedSoundEffect = param.asInt();
+		stopCurrentEffect = true;
+
+		Blynk.virtualWrite(EFFECTPIN, 0);
+		selectedEffect = 0;
+
+		DEBUG_PRINT("Variable 'selectedSoundEffect' set to: ");
+		DEBUG_PRINTLN(selectedSoundEffect);
+
 		DEBUG_PRINT("Variable 'selectedEffect' set to: ");
 		DEBUG_PRINTLN(selectedEffect);
 
@@ -437,20 +474,26 @@ BLYNK_WRITE(GROUPPIN){
 ////////////////////////////////////////////////////////////////////////////////
 //SETUP FUNCTIONS                                                             //
 ////////////////////////////////////////////////////////////////////////////////
-//BEFOREUPLOAD Make sure all the effects are listed in the function below or
-//BEFOREUPLOAD they will not show up in the Blynk app.
-void addEffectsToList(){
+//BEFOREUPLOAD Make sure all effects and groups are listed below.
+void populateLists(){
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
-	effectsList.add("Sunrise/Sunset");
+	effectsList.add("Blink");
 	effectsList.add("Solid Color");
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
-}
 
-//BEFOREUPLOAD Make sure all the LED groups are listed in the function below or
-//BEFOREUPLOAD they will not show up in the Blynk app.
-void addLedGroupsToList(){
+
+
+	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
+
+	soundEffectsList.add("Blink");
+	soundEffectsList.add("Solid Color");
+
+	DEBUG_PRINTLN("Finished populating 'effectList'.");
+
+
+
 	DEBUG_PRINTLN("Populating 'ledGroupList' with effects.");
 
 	ledGroupsList.add("All");
@@ -522,6 +565,7 @@ void setupBlynk(){
 
 	Blynk.setProperty(GROUPPIN, "labels", ledGroupsList);
 	Blynk.setProperty(EFFECTPIN, "labels", effectsList);
+	Blynk.setProperty(SOUNDEFFECTPIN, "labels", soundEffectsList);
 
 	DEBUG_PRINTLN("Sent group and effect list to Blynk. Check the drop-down menus.");
 	DEBUG_PRINTLN("Syncing values of all pins from Blynk. This will take a few seconds.");
@@ -556,8 +600,7 @@ void setup(){
 
 	//Only setup everything else if the WiFi connects.
 	if(WiFi.status() == WL_CONNECTED){
-		addLedGroupsToList();
-		addEffectsToList();
+		populateLists();
 		setupLeds();
 		setupBlynk();
 		getSunTime();
@@ -568,8 +611,7 @@ void setup(){
 void loop(){
 	Blynk.run();
 	updateTime.run();
-
-	stopCurrentEffect = false;
+	currentMillis = millis();
 
 	//If the lights are meant to be turned on/off automatically, run this loop.
 	if(autoOnOff){
@@ -604,7 +646,16 @@ void loop(){
 	if(onOff){
 		switch(selectedEffect){
 			case 1:
-				sunriseSunset();
+				blink();
+				break;
+			case 2:
+				solidColor();
+				break;
+		}
+
+		switch(selectedSoundEffect){
+			case 1:
+				blink();
 				break;
 			case 2:
 				solidColor();
@@ -623,6 +674,7 @@ void loop(){
 ////////////////////////////////////////////////////////////////////////////////
 //EFFECT FUNCTIONS                                                            //
 ////////////////////////////////////////////////////////////////////////////////
+
 //This function must be called in ALL effects for the program to keep running.
 //This is what will populate the LEDs with the given effect so don't use
 //FastLED.show() in the effect functions themselves. This is also going to keep
@@ -634,17 +686,20 @@ void implementer(){
 
 	//If a command is received which requires a change of effect, kill the current
 	//effect.
-	if(stopCurrentEffect){
+	if(stopCurrentEffect != false){
+		stopCurrentEffect = false;
 		FastLED.clear();
 		return;
 	}
 }
 
+// LEDS OFF ////////////////////////////////////////////////////////////////////
 void ledsOff(){
 	FastLED.clear();
 	implementer();
 }
 
+// SOLID COLOR /////////////////////////////////////////////////////////////////
 void solidColor(){
 	FastLED.setBrightness(brightness);
 
@@ -654,6 +709,34 @@ void solidColor(){
 	implementer();
 }
 
-void sunriseSunset(){
+// BLINK ///////////////////////////////////////////////////////////////////////
+bool ledState = true;
+unsigned long previousMillis = 0;
+
+void blink(){
+	uint16_t interval = map(animationSpeed, 0, 255, 1, 2000);
+
+	CRGB rgbval(currentRed, currentGreen, currentBlue);
+
+	if(currentMillis - previousMillis >= interval){
+		previousMillis = currentMillis;
+
+		if(ledState == true){
+			ledState = false;
+		}
+
+		else if(ledState == false){
+			ledState = true;
+		}
+	}
+
+	if(ledState == true){
+		fill_solid(leds, NUMLEDS, rgbval);
+	}
+
+	else{
+		FastLED.clear();
+	}
+
 	implementer();
 }
