@@ -793,6 +793,8 @@ void solidColor(){
 }
 
 // BLINK ///////////////////////////////////////////////////////////////////////
+//WORKINGON This effect is for testing only, remove it when finished. Blink effect is
+//WORKINGON already implemented through ws2812fx library.
 bool ledState = true;
 unsigned long previousMillis = 0;
 
