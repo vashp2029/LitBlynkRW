@@ -29,6 +29,7 @@
 #include "Dusk2Dawn.h"
 #include "WidgetRTC.h"
 #include "FastLED.h"
+#include "WS2812FX.h"
 #include "Debug.h"
 #include "SetSpecific.h"
 
@@ -72,36 +73,39 @@
 ////////////////////////////////////////////////////////////////////////////////
 //GLOBAL VARIABLES                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-bool onOff; 						//True = LEDs on
-bool autoOnOff; 					//True = LEDs will automatically turn on at specified time
-bool stopCurrentEffect; 			//True = Stop current effect to load new paramenters
-bool globalLedSelection; 			//True = all led groups selected
-bool dst;							//True = Daylight savings time is in effect
+bool onOff 					= false; 	//True = LEDs on
+bool autoOnOff				= false;	//True = LEDs will automatically turn on at specified time
+bool stopCurrentEffect 		= false;	//True = Stop current effect to load new paramenters
+bool firstRun 				= true;		//True = This is the first run of a newly selected effect
+bool globalLedSelection 	= true; 	//True = All led groups selected
+bool dst 					= true;		//True = Daylight savings time is in effect
 
-uint8_t selectedEffect = 0; 		//Store currently selected effect from Blynk
-uint8_t selectedSoundEffect = 0;	//Store currently selected effect from Blynk
-uint8_t selectedLedGroup = LEDGROUP;//Tells all ESPs which group should respond to command
-uint8_t brightness = 0; 			//Range is 0-255
-uint8_t micSensitivity = 0; 		//Range is 0-255
-uint8_t animationSpeed = 0; 		//Range is 0-255
-uint8_t currentRed = 0; 			//Range is 0-255
-uint8_t currentGreen = 0; 			//Range is 0-255
-uint8_t currentBlue = 0; 			//Range is 0-255
+uint8_t selectedEffect 		= 0; 		//Store currently selected effect from Blynk
+uint8_t selectedSoundEffect = 0;		//Store currently selected effect from Blynk
+uint8_t selectedLedGroup 	= LEDGROUP;	//Tells all ESPs which group should respond to command
+uint8_t brightness 			= 0; 		//Range is 0-255
+uint8_t micSensitivity 		= 0; 		//Range is 0-255
+uint8_t animationSpeed 		= 0; 		//Range is 0-255
+uint8_t currentRed 			= 0; 		//Range is 0-255
+uint8_t currentGreen 		= 0; 		//Range is 0-255
+uint8_t currentBlue 		= 0; 		//Range is 0-255
 
-unsigned long currentMillis;		//Time elapsed since program began
-unsigned long currentTimeInEpoch; 	//Current time in EPOCH
-unsigned long midnightInEpoch; 		//EPOCH time at prior midnight
-unsigned long sunriseInEpoch; 		//Today's sunrise time in EPOCH
-unsigned long sunsetInEpoch; 		//Today's sunset time in EPOCH
-unsigned long commandTimeInEpoch; 	//Time a command is received in EPOCH
-unsigned long autoStartTimeInEpoch; //Time to auto turn on LEDs in EPOCH
-unsigned long autoStopTimeInEpoch; 	//Time to auto turn off LEDs in EPOCH
+unsigned long currentMillis;			//Time elapsed since program began
+unsigned long currentTimeInEpoch; 		//Current time in EPOCH
+unsigned long midnightInEpoch; 			//EPOCH time at prior midnight
+unsigned long sunriseInEpoch; 			//Today's sunrise time in EPOCH
+unsigned long sunsetInEpoch; 			//Today's sunset time in EPOCH
+unsigned long commandTimeInEpoch; 		//Time a command is received in EPOCH
+unsigned long autoStartTimeInEpoch; 	//Time to auto turn on LEDs in EPOCH
+unsigned long autoStopTimeInEpoch; 		//Time to auto turn off LEDs in EPOCH
 
 WidgetRTC clock;
 BlynkTimer updateTime;
 Dusk2Dawn atlantaSun(LATITUDE, LONGITUDE, TIMEZONE);
 WiFiManager wifiManager;
 struct CRGB leds[NUMLEDS];
+CRGB currentRGB(currentRed, currentGreen, currentBlue);
+WS2812FX ws2812fx = WS2812FX(NUMLEDS, DATAPIN, NEO_GRB + NEO_KHZ800);
 
 //This will store strings to be easily called later if needed for something like
 //the Blynk.setProperty function to populate a drop down menu in Blynk.
@@ -170,6 +174,7 @@ BLYNK_WRITE(SWITCHPIN){
 
 		onOff = param.asInt();
 		stopCurrentEffect = true;
+		firstRun = true;
 
 		DEBUG_PRINT("Variable 'onOff' toggled to: ");
 		DEBUG_PRINTLN(onOff);
@@ -283,6 +288,7 @@ BLYNK_WRITE(BRIGHTNESSPIN){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		brightness = map(param.asInt(), 0, 255, 0, 100);
+		firstRun = true;
 
 		DEBUG_PRINT("Variable 'brightness' set to: ");
 		DEBUG_PRINTLN(brightness);
@@ -301,6 +307,7 @@ BLYNK_WRITE(MICPIN){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		micSensitivity = param.asInt();
+		firstRun = true;
 
 		DEBUG_PRINT("Variable 'micSensitivity' set to: ");
 		DEBUG_PRINTLN(micSensitivity);
@@ -319,6 +326,7 @@ BLYNK_WRITE(SPEEDPIN){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
 		animationSpeed = param.asInt();
+		firstRun = true;
 
 		DEBUG_PRINT("Variable 'animationSpeed' set to: ");
 		DEBUG_PRINTLN(animationSpeed);
@@ -338,6 +346,7 @@ BLYNK_WRITE(EFFECTPIN){
 
 		selectedEffect = param.asInt();
 		stopCurrentEffect = true;
+		firstRun = true;
 
 		Blynk.virtualWrite(SOUNDEFFECTPIN, 0);
 		selectedSoundEffect = 0;
@@ -366,6 +375,7 @@ BLYNK_WRITE(SOUNDEFFECTPIN){
 
 		selectedSoundEffect = param.asInt();
 		stopCurrentEffect = true;
+		firstRun = true;
 
 		Blynk.virtualWrite(EFFECTPIN, 0);
 		selectedEffect = 0;
@@ -401,7 +411,9 @@ BLYNK_WRITE(RGBPIN){
 		currentGreen = param[1].asInt();
 		currentBlue = param[2].asInt();
 
-		stopCurrentEffect = true;
+		currentRGB = (currentRed, currentGreen, currentBlue);
+
+		firstRun = true;
 
 		DEBUG_PRINT("Variable 'stopCurrentEffect' set to: ");
 		DEBUG_PRINTLN(stopCurrentEffect);
@@ -478,8 +490,26 @@ BLYNK_WRITE(GROUPPIN){
 void populateLists(){
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
-	effectsList.add("Blink");
+	effectsList.add("Sunrise/Sunset");
 	effectsList.add("Solid Color");
+	effectsList.add("Blink");
+	effectsList.add("Color Wipe Random");
+	effectsList.add("Rainbow");
+	effectsList.add("Rainbow Cycle");
+	effectsList.add("Scan");
+	effectsList.add("Dual Scan");
+	effectsList.add("Fade");
+	effectsList.add("Chase Color");
+	effectsList.add("Chase Random");
+	effectsList.add("Chase Rainbow");
+	effectsList.add("Chase Blackout Rainbow");
+	effectsList.add("Running Lights");
+	effectsList.add("Running Color");
+	effectsList.add("Larson Scanner");
+	effectsList.add("Comet");
+	effectsList.add("Fireworks");
+	effectsList.add("Christmas");
+	effectsList.add("Halloween");
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
 
@@ -510,12 +540,10 @@ void populateLists(){
 void setupLeds(){
 	DEBUG_PRINTLN("Setting up LEDs.");
 
-	animationSpeed 			= 0;
-	currentRed		= 255;
-	currentGreen	= 255;
-	currentBlue		= 255;
-	onOff 			= true;
+	//WS2812FX
+	ws2812fx.init();
 
+	//FastLED
 	FastLED.addLeds<CHIPSET, DATAPIN, COLORORDER>(leds, NUMLEDS);
 	FastLED.setCorrection(TypicalLEDStrip);
 
@@ -539,6 +567,21 @@ void setupWiFi(){
 
 	DEBUG_PRINT("Wifi setup is complete, the current IP Address is: ");
 	DEBUG_PRINTLN(WiFi.localIP());
+}
+
+void blynkSlowSync(){
+	//If you use a vanilla Blynk.syncAll() function here, the ESP may crash
+	//because of the flood of values. This function iterates from 0 to the
+	//number of pins as defined in the 'config' section, syncing one pin
+	//every 10 milliseconds.
+	for(uint8_t i = 0; i <= PINCOUNT; i++){
+		Blynk.syncVirtual(i);
+		delay(10);
+		Blynk.run();
+
+		DEBUG_PRINT("Obtain value for pin V");
+		DEBUG_PRINTLN(i);
+	}
 }
 
 void setupBlynk(){
@@ -570,18 +613,7 @@ void setupBlynk(){
 	DEBUG_PRINTLN("Sent group and effect list to Blynk. Check the drop-down menus.");
 	DEBUG_PRINTLN("Syncing values of all pins from Blynk. This will take a few seconds.");
 
-	//If you use a vanilla Blynk.syncAll() function here, the ESP may crash
-	//because of the flood of values. This function iterates from 0 to the
-	//number of pins as defined in the 'config' section, syncing one pin
-	//every 10 milliseconds.
-	for(uint8_t i = 0; i <= PINCOUNT; i++){
-		Blynk.syncVirtual(i);
-		delay(10);
-		Blynk.run();
-
-		DEBUG_PRINT("Obtain value for pin V");
-		DEBUG_PRINTLN(i);
-	}
+	blynkSlowSync();
 
 	DEBUG_PRINTLN("Finished syncing values.");
 
@@ -644,18 +676,26 @@ void loop(){
 	//BEFOREUPLOAD Make sure all the functions are implemented in this
 	//BEFOREUPLOAD switch statement.
 	if(onOff){
+		//This will call the function for the selected effect. If the
+		//selected effect does not have a case statement below, it means that the
+		//effect is a WS2812FX effect and it will, by default, call the ws2812fxImplementer
+		//function where there is another switch statement to choose effects from the
+		//WS2812FX library.
 		switch(selectedEffect){
 			case 1:
-				blink();
+				//sunriseSunset());
 				break;
 			case 2:
 				solidColor();
+				break;
+			default:
+				ws2812fxImplementer();
 				break;
 		}
 
 		switch(selectedSoundEffect){
 			case 1:
-				blink();
+				//sunriseSunset();
 				break;
 			case 2:
 				solidColor();
@@ -679,10 +719,8 @@ void loop(){
 //This is what will populate the LEDs with the given effect so don't use
 //FastLED.show() in the effect functions themselves. This is also going to keep
 //the time updated and keep Blynk running to accept commands.
-void implementer(){
+void fastLedImplementer(){
 	FastLED.show();
-	Blynk.run();
-	updateTime.run();
 
 	//If a command is received which requires a change of effect, kill the current
 	//effect.
@@ -693,10 +731,55 @@ void implementer(){
 	}
 }
 
+void ws2812fxImplementer(){
+	if(firstRun == true){
+		firstRun = false;
+
+		ws2812fx.setBrightness(brightness);
+		ws2812fx.setColor(currentRed, currentGreen, currentBlue);
+		ws2812fx.setSpeed(map(animationSpeed, 0, 255, 65535, 10));
+
+		//BEFOREUPLOAD The cases should start from where the switch statement in the main
+		//BEFOREUPLOAD loop left off for 'selectedEffect'. For example, if you have case
+		//BEFOREUPLOAD 1 and case 2 defined in the main loop as FastLED functions, start
+		//BEFOREUPLOAD these at case 3.
+		switch(selectedEffect){
+			case 3: 	ws2812fx.setMode(FX_MODE_BLINK);					break;
+			case 4: 	ws2812fx.setMode(FX_MODE_COLOR_WIPE_RANDOM);		break;
+			case 5: 	ws2812fx.setMode(FX_MODE_RAINBOW);					break;
+			case 6: 	ws2812fx.setMode(FX_MODE_RAINBOW_CYCLE);			break;
+			case 7: 	ws2812fx.setMode(FX_MODE_SCAN);						break;
+			case 8: 	ws2812fx.setMode(FX_MODE_DUAL_SCAN);				break;
+			case 9: 	ws2812fx.setMode(FX_MODE_FADE);						break;
+			case 10: 	ws2812fx.setMode(FX_MODE_CHASE_COLOR);				break;
+			case 11: 	ws2812fx.setMode(FX_MODE_CHASE_RANDOM); 			break;
+			case 12: 	ws2812fx.setMode(FX_MODE_CHASE_RAINBOW);			break;
+			case 13: 	ws2812fx.setMode(FX_MODE_CHASE_BLACKOUT_RAINBOW); 	break;
+			case 14: 	ws2812fx.setMode(FX_MODE_RUNNING_LIGHTS);			break;
+			case 15: 	ws2812fx.setMode(FX_MODE_RUNNING_COLOR); 			break;
+			case 16: 	ws2812fx.setMode(FX_MODE_LARSON_SCANNER); 			break;
+			case 17: 	ws2812fx.setMode(FX_MODE_COMET); 					break;
+			case 18: 	ws2812fx.setMode(FX_MODE_FIREWORKS_RANDOM); 		break;
+			case 19: 	ws2812fx.setMode(FX_MODE_MERRY_CHRISTMAS); 			break;
+			case 20: 	ws2812fx.setMode(FX_MODE_HALLOWEEN); 				break;
+			default:	return;
+		}
+
+		ws2812fx.start();
+	}
+
+	if(stopCurrentEffect != false){
+		stopCurrentEffect = false;
+		return;
+	}
+
+	ws2812fx.service();
+}
+
 // LEDS OFF ////////////////////////////////////////////////////////////////////
 void ledsOff(){
 	FastLED.clear();
-	implementer();
+	fastLedImplementer();
 }
 
 // SOLID COLOR /////////////////////////////////////////////////////////////////
@@ -706,7 +789,7 @@ void solidColor(){
 	CRGB rgbval(currentRed, currentGreen, currentBlue);
 	fill_solid(leds, NUMLEDS, rgbval);
 	
-	implementer();
+	fastLedImplementer();
 }
 
 // BLINK ///////////////////////////////////////////////////////////////////////
@@ -714,7 +797,7 @@ bool ledState = true;
 unsigned long previousMillis = 0;
 
 void blink(){
-	uint16_t interval = map(animationSpeed, 0, 255, 1, 2000);
+	uint16_t interval = map(animationSpeed, 0, 255, 2000, 1);
 
 	CRGB rgbval(currentRed, currentGreen, currentBlue);
 
@@ -738,5 +821,5 @@ void blink(){
 		FastLED.clear();
 	}
 
-	implementer();
+	fastLedImplementer();
 }
