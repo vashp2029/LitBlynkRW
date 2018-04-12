@@ -1,0 +1,16 @@
+Power Supply: https://www.adafruit.com/product/658
+	- Can use another 5V/10A power supply as long as it outputs to a 2.1mm DC jack
+
+Power Jack: https://www.adafruit.com/product/610
+
+MOSFET: https://www.adafruit.com/product/2165
+
+Level Converter: https://www.adafruit.com/product/757
+
+LED Connecter: https://www.digikey.com/product-detail/en/schurter-inc/6100.3200/486-1002-ND/569902
+
+LED Connecter to LED Cable: https://www.adafruit.com/product/3311
+
+Microphone: https://www.adafruit.com/product/1713
+
+Breadboard: https://www.amazon.com/Qunqi-point-Experiment-Breadboard-5-5%C3%978-2%C3%970-85cm/dp/B0135IQ0ZC/ref=sr_1_7?ie=UTF8&qid=1523307312&sr=8-7&keywords=mini+breadboard&dpID=51WCT63MUKL&preST=_SX342_QL70_&dpSrc=srch
