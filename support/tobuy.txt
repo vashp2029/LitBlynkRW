@@ -1,0 +1,21 @@
+Need:
+  - 25 m of LED strip
+  - 5 power supplies
+  - 2 splitters for LED connection (TV stands and glass desk rectangular part)
+  - 2 extensions for LED connection (wall desk)
+  - 5 barrel plugs for enclosure (for power)
+  - 5 LED cables that fit LED connector on enclosure
+  - 5 LED connectors for enclosure
+  - 10 straight flat connecters for LED strips (glass desk rectangular part and couch)
+  - 20 90-degree flat connecters for LED strips
+
+Furniture Dimensions:
+  - Couch:            1.63 m x 0.71 m x 0.88 m = 6.50 m
+  - Bed:              2.00 m x 1.55 m = 5.55 m
+  - TV Stand:         0.75 m x 0.75 m (each, 2 pieces) = 6.00 m
+  - Wall Desk:        0.74 m x 1.42 m = 4.34 m
+  - Glass Desk
+    Rectangular Part: 0.81 m x 0.52 m (each, 2 pieces) = 5.32 m
+    Curved Part:      0.61 m x 0.61 m (curved part) = 2.22 m
+
+  - Total = 30 m (minus the 5 m strip you already have)
