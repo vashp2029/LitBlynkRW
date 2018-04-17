@@ -833,18 +833,11 @@ void soundmems(){
 
 	previousSample = currentSample;
 
-	DEBUG_PRINTLN(String("The currentSample is: ") + currentSample + String(" and samplePeak is: ") + samplePeak);
+	//Uncomment if you need to see raw mic values.
+	//DEBUG_PRINTLN(String("The currentSample is: ") + currentSample + String(" and samplePeak is: ") + samplePeak);
 }
 
-// int currentSample;
 
-// void soundmems() {
-
-//   currentSample = analogRead(MICPIN);
-
-//   DEBUG_PRINT("The current mic sample is: ");
-//   DEBUG_PRINTLN(currentSample);
-// }
 
 
 ////////////////////////////////////////////////////////////////////////////////
