@@ -490,7 +490,11 @@ BLYNK_WRITE(GROUPPIN){
 void populateLists(){
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
+	//My Effects
 	effectsList.add("Sunrise/Sunset");
+	effectsList.add("Thisothereffect");
+
+	//WS2812FX Effects
 	effectsList.add("Solid Color");
 	effectsList.add("Blink");
 	effectsList.add("Color Wipe Random");
@@ -744,24 +748,25 @@ void ws2812fxImplementer(){
 		//BEFOREUPLOAD 1 and case 2 defined in the main loop as FastLED functions, start
 		//BEFOREUPLOAD these at case 3.
 		switch(selectedEffect){
-			case 3: 	ws2812fx.setMode(FX_MODE_BLINK);					break;
-			case 4: 	ws2812fx.setMode(FX_MODE_COLOR_WIPE_RANDOM);		break;
-			case 5: 	ws2812fx.setMode(FX_MODE_RAINBOW);					break;
-			case 6: 	ws2812fx.setMode(FX_MODE_RAINBOW_CYCLE);			break;
-			case 7: 	ws2812fx.setMode(FX_MODE_SCAN);						break;
-			case 8: 	ws2812fx.setMode(FX_MODE_DUAL_SCAN);				break;
-			case 9: 	ws2812fx.setMode(FX_MODE_FADE);						break;
-			case 10: 	ws2812fx.setMode(FX_MODE_CHASE_COLOR);				break;
-			case 11: 	ws2812fx.setMode(FX_MODE_CHASE_RANDOM); 			break;
-			case 12: 	ws2812fx.setMode(FX_MODE_CHASE_RAINBOW);			break;
-			case 13: 	ws2812fx.setMode(FX_MODE_CHASE_BLACKOUT_RAINBOW); 	break;
-			case 14: 	ws2812fx.setMode(FX_MODE_RUNNING_LIGHTS);			break;
-			case 15: 	ws2812fx.setMode(FX_MODE_RUNNING_COLOR); 			break;
-			case 16: 	ws2812fx.setMode(FX_MODE_LARSON_SCANNER); 			break;
-			case 17: 	ws2812fx.setMode(FX_MODE_COMET); 					break;
-			case 18: 	ws2812fx.setMode(FX_MODE_FIREWORKS_RANDOM); 		break;
-			case 19: 	ws2812fx.setMode(FX_MODE_MERRY_CHRISTMAS); 			break;
-			case 20: 	ws2812fx.setMode(FX_MODE_HALLOWEEN); 				break;
+			case 3:		ws2812fx.setMode(FX_MODE_STATIC);					break;
+			case 4: 	ws2812fx.setMode(FX_MODE_BLINK);					break;
+			case 5: 	ws2812fx.setMode(FX_MODE_COLOR_WIPE_RANDOM);		break;
+			case 6: 	ws2812fx.setMode(FX_MODE_RAINBOW);					break;
+			case 7: 	ws2812fx.setMode(FX_MODE_RAINBOW_CYCLE);			break;
+			case 8: 	ws2812fx.setMode(FX_MODE_SCAN);						break;
+			case 9: 	ws2812fx.setMode(FX_MODE_DUAL_SCAN);				break;
+			case 10: 	ws2812fx.setMode(FX_MODE_FADE);						break;
+			case 11: 	ws2812fx.setMode(FX_MODE_CHASE_COLOR);				break;
+			case 12: 	ws2812fx.setMode(FX_MODE_CHASE_RANDOM); 			break;
+			case 13: 	ws2812fx.setMode(FX_MODE_CHASE_RAINBOW);			break;
+			case 14: 	ws2812fx.setMode(FX_MODE_CHASE_BLACKOUT_RAINBOW); 	break;
+			case 15: 	ws2812fx.setMode(FX_MODE_RUNNING_LIGHTS);			break;
+			case 16: 	ws2812fx.setMode(FX_MODE_RUNNING_COLOR); 			break;
+			case 17: 	ws2812fx.setMode(FX_MODE_LARSON_SCANNER); 			break;
+			case 18: 	ws2812fx.setMode(FX_MODE_COMET); 					break;
+			case 19: 	ws2812fx.setMode(FX_MODE_FIREWORKS_RANDOM); 		break;
+			case 20: 	ws2812fx.setMode(FX_MODE_MERRY_CHRISTMAS); 			break;
+			case 21: 	ws2812fx.setMode(FX_MODE_HALLOWEEN); 				break;
 			default:	return;
 		}
 
@@ -779,49 +784,5 @@ void ws2812fxImplementer(){
 // LEDS OFF ////////////////////////////////////////////////////////////////////
 void ledsOff(){
 	FastLED.clear();
-	fastLedImplementer();
-}
-
-// SOLID COLOR /////////////////////////////////////////////////////////////////
-void solidColor(){
-	FastLED.setBrightness(brightness);
-
-	CRGB rgbval(currentRed, currentGreen, currentBlue);
-	fill_solid(leds, NUMLEDS, rgbval);
-	
-	fastLedImplementer();
-}
-
-// BLINK ///////////////////////////////////////////////////////////////////////
-//WORKINGON This effect is for testing only, remove it when finished. Blink effect is
-//WORKINGON already implemented through ws2812fx library.
-bool ledState = true;
-unsigned long previousMillis = 0;
-
-void blink(){
-	uint16_t interval = map(animationSpeed, 0, 255, 2000, 1);
-
-	CRGB rgbval(currentRed, currentGreen, currentBlue);
-
-	if(currentMillis - previousMillis >= interval){
-		previousMillis = currentMillis;
-
-		if(ledState == true){
-			ledState = false;
-		}
-
-		else if(ledState == false){
-			ledState = true;
-		}
-	}
-
-	if(ledState == true){
-		fill_solid(leds, NUMLEDS, rgbval);
-	}
-
-	else{
-		FastLED.clear();
-	}
-
 	fastLedImplementer();
 }
