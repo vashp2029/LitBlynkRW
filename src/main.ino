@@ -45,7 +45,7 @@
 #define SWITCHPIN 		V1 			//On/off switch
 #define AUTOSWITCHPIN 	V2 			//On/off for auto-turn-on LEDs at specified time
 #define BRIGHTNESSPIN 	V3 			//Brightness slider (range 0-255 in Blynk app)
-#define MICPIN 			V4 			//Mic sensitivity (range 0-255 in Blynk app)
+#define SENSITIVITYPIN 	V4 			//Mic sensitivity (range 0-255 in Blynk app)
 #define SPEEDPIN 		V5 			//Animation speed (range 0-255 in Blynk app)
 #define EFFECTPIN 		V6 			//Effect selection drop-down menu
 #define SOUNDEFFECTPIN	V7 			//Sound effect selection drop-down menu
@@ -54,6 +54,7 @@
 #define AUTOTIMEPIN 	V10			//Time to auto-turn-on LEDs
 #define PINCOUNT		11 			//No. of pins for custom syncAll (to prevent crashing)
 
+#define MICPIN			A0
 #define DATAPIN			D5
 #define COLORORDER		GRB
 #define CHIPSET			WS2812B
@@ -66,6 +67,9 @@
 #define LATITUDE		34.051490 	//For sunrise/sunset functions
 #define LONGITUDE		-84.071300 	//For sunrise/sunset functions
 #define TIMEZONE		-5 			//For sunrise/sunset functions
+
+#define DCOFFSET		820			//Offset the waveform above or below the zero line
+#define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
 
@@ -299,14 +303,16 @@ BLYNK_WRITE(BRIGHTNESSPIN){
 	}
 }
 
-BLYNK_WRITE(MICPIN){
-	DEBUG_PRINT("Moved 'MICPIN' slider (V4) to: ");
+BLYNK_WRITE(SENSITIVITYPIN){
+	DEBUG_PRINT("Moved 'SENSITIVITYPIN' slider (V4) to: ");
 	DEBUG_PRINTLN(param.asInt());
 
 	if(selectedLedGroup == LEDGROUP || globalLedSelection == true){
 		DEBUG_PRINTLN("Accepting command: all groups selected or this group selected.");
 
-		micSensitivity = param.asInt();
+		//Inverse the value of micSensitivity so sliding the bar up decreases the threshold
+		//required to activate the mic.
+		micSensitivity = 255 - param.asInt();
 		firstRun = true;
 
 		DEBUG_PRINT("Variable 'micSensitivity' set to: ");
@@ -521,8 +527,8 @@ void populateLists(){
 
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
-	soundEffectsList.add("Blink");
-	soundEffectsList.add("Solid Color");
+	soundEffectsList.add("Testing");
+	soundEffectsList.add("No Effect");
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
 
@@ -680,30 +686,38 @@ void loop(){
 	//BEFOREUPLOAD Make sure all the functions are implemented in this
 	//BEFOREUPLOAD switch statement.
 	if(onOff){
-		//This will call the function for the selected effect. If the
-		//selected effect does not have a case statement below, it means that the
-		//effect is a WS2812FX effect and it will, by default, call the ws2812fxImplementer
-		//function where there is another switch statement to choose effects from the
-		//WS2812FX library.
-		switch(selectedEffect){
-			case 1:
-				//sunriseSunset());
-				break;
-			case 2:
-				solidColor();
-				break;
-			default:
-				ws2812fxImplementer();
-				break;
+		if(selectedEffect != 0){
+			//This will call the function for the selected effect. If the
+			//selected effect does not have a case statement below, it means that the
+			//effect is a WS2812FX effect and it will, by default, call the ws2812fxImplementer
+			//function where there is another switch statement to choose effects from the
+			//WS2812FX library.
+			switch(selectedEffect){
+				case 1:
+					//sunriseSunset());
+					break;
+				case 2:
+					//someEffect();
+					break;
+				default:
+					ws2812fxImplementer();
+					break;
+			}
 		}
 
-		switch(selectedSoundEffect){
-			case 1:
-				//sunriseSunset();
-				break;
-			case 2:
-				solidColor();
-				break;
+		//If a sound-reactive effect is selected, run soundmems to read microphone
+		//before going into the effect function to react.
+		else if(selectedSoundEffect != 0){
+			soundmems();
+
+			switch(selectedSoundEffect){
+				case 1:
+					//someEffect();
+					break;
+				case 2:
+					//someEffect();
+					break;
+			}
 		}
 	}
 
@@ -716,9 +730,9 @@ void loop(){
 
 
 ////////////////////////////////////////////////////////////////////////////////
-//EFFECT FUNCTIONS                                                            //
+//EFFECT SUPPORT FUNCTIONS                                                    //
 ////////////////////////////////////////////////////////////////////////////////
-
+// IMPLEMENTATION FOR MY EFFECTS ///////////////////////////////////////////////
 //This function must be called in ALL effects for the program to keep running.
 //This is what will populate the LEDs with the given effect so don't use
 //FastLED.show() in the effect functions themselves. This is also going to keep
@@ -735,6 +749,7 @@ void fastLedImplementer(){
 	}
 }
 
+// IMPLEMENTATION FOR WS2812FX EFFECTS /////////////////////////////////////////
 void ws2812fxImplementer(){
 	if(firstRun == true){
 		firstRun = false;
@@ -781,6 +796,60 @@ void ws2812fxImplementer(){
 	ws2812fx.service();
 }
 
+// MIC READING /////////////////////////////////////////////////////////////////
+bool samplePeak = false;
+int16_t currentSample = 0;
+int16_t previousSample = 0;
+int16_t sampleArray[SOUNDSAMPLES];
+uint16_t sampleSum = 0;
+uint16_t sampleAverage = 0;
+uint16_t sampleCount = 0;
+
+void soundmems(){
+	//Read the current mic value and store it to currentSample.
+	currentSample = abs(analogRead(MICPIN) - DCOFFSET);
+
+	//If the current sample of sound is below the threshold required by the sensitivity
+	//setting, just set it to 0 and pretend there was no sound.
+	if(currentSample < micSensitivity) currentSample = 0;
+
+	//Add the currentSample to the sum of samples and subtract the oldest sample from the array.
+	//This will keep a summation of the samples in the array (subtracting the oldest sample
+	//which will be removed in the next bit).
+	sampleSum = sampleSum + currentSample - sampleArray[sampleCount];
+	sampleAverage = sampleSum/SOUNDSAMPLES;
+
+	//Remove the oldest sample from the array and replace it with the new one.
+	sampleArray[sampleCount] = currentSample;
+
+	//This will iterate sampleCount up by 1 until it gets to SOUNDSAMPLES, then start over.
+	sampleCount = (sampleCount + 1) % SOUNDSAMPLES;
+
+	//If the current sample is larger than the average of the samples and less than the last
+	//sample, a local peak has occurred, so set samplePeak to 1.
+	if(currentSample > (sampleAverage + micSensitivity) && (currentSample < previousSample)){
+		samplePeak = true;
+	}
+
+	previousSample = currentSample;
+
+	DEBUG_PRINTLN(String("The currentSample is: ") + currentSample + String(" and samplePeak is: ") + samplePeak);
+}
+
+// int currentSample;
+
+// void soundmems() {
+
+//   currentSample = analogRead(MICPIN);
+
+//   DEBUG_PRINT("The current mic sample is: ");
+//   DEBUG_PRINTLN(currentSample);
+// }
+
+
+////////////////////////////////////////////////////////////////////////////////
+//EFFECT FUNCTIONS                                                            //
+////////////////////////////////////////////////////////////////////////////////
 // LEDS OFF ////////////////////////////////////////////////////////////////////
 void ledsOff(){
 	FastLED.clear();
