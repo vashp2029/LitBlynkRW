@@ -68,7 +68,7 @@
 #define LONGITUDE		-84.071300 	//For sunrise/sunset functions
 #define TIMEZONE		-5 			//For sunrise/sunset functions
 
-#define DCOFFSET		820			//Offset the waveform above or below the zero line
+#define DCOFFSET		512			//Offset the waveform above or below the zero line
 #define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
