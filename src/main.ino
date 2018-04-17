@@ -68,7 +68,7 @@
 #define LONGITUDE		-84.071300 	//For sunrise/sunset functions
 #define TIMEZONE		-5 			//For sunrise/sunset functions
 
-#define DCOFFSET		912			//Offset the waveform above or below the zero line
+#define DCOFFSET		820			//Offset the waveform above or below the zero line
 #define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
@@ -797,54 +797,54 @@ void ws2812fxImplementer(){
 }
 
 // MIC READING /////////////////////////////////////////////////////////////////
-// bool samplePeak = false;
-// int16_t currentSample = 0;
-// int16_t previousSample = 0;
-// int16_t sampleArray[SOUNDSAMPLES];
-// uint16_t sampleSum = 0;
-// uint16_t sampleAverage = 0;
-// uint16_t sampleCount = 0;
+bool samplePeak = false;
+int16_t currentSample = 0;
+int16_t previousSample = 0;
+int16_t sampleArray[SOUNDSAMPLES];
+uint16_t sampleSum = 0;
+uint16_t sampleAverage = 0;
+uint16_t sampleCount = 0;
 
-// void soundmems(){
-// 	//Read the current mic value and store it to currentSample.
-// 	currentSample = abs(analogRead(MICPIN) - DCOFFSET);
+void soundmems(){
+	//Read the current mic value and store it to currentSample.
+	currentSample = abs(analogRead(MICPIN) - DCOFFSET);
 
-// 	//If the current sample of sound is below the threshold required by the sensitivity
-// 	//setting, just set it to 0 and pretend there was no sound.
-// 	if(currentSample < micSensitivity) currentSample = 0;
+	//If the current sample of sound is below the threshold required by the sensitivity
+	//setting, just set it to 0 and pretend there was no sound.
+	if(currentSample < micSensitivity) currentSample = 0;
 
-// 	//Add the currentSample to the sum of samples and subtract the oldest sample from the array.
-// 	//This will keep a summation of the samples in the array (subtracting the oldest sample
-// 	//which will be removed in the next bit).
-// 	sampleSum = sampleSum + currentSample - sampleArray[sampleCount];
-// 	sampleAverage = sampleSum/SOUNDSAMPLES;
+	//Add the currentSample to the sum of samples and subtract the oldest sample from the array.
+	//This will keep a summation of the samples in the array (subtracting the oldest sample
+	//which will be removed in the next bit).
+	sampleSum = sampleSum + currentSample - sampleArray[sampleCount];
+	sampleAverage = sampleSum/SOUNDSAMPLES;
 
-// 	//Remove the oldest sample from the array and replace it with the new one.
-// 	sampleArray[sampleCount] = currentSample;
+	//Remove the oldest sample from the array and replace it with the new one.
+	sampleArray[sampleCount] = currentSample;
 
-// 	//This will iterate sampleCount up by 1 until it gets to SOUNDSAMPLES, then start over.
-// 	sampleCount = (sampleCount + 1) % SOUNDSAMPLES;
+	//This will iterate sampleCount up by 1 until it gets to SOUNDSAMPLES, then start over.
+	sampleCount = (sampleCount + 1) % SOUNDSAMPLES;
 
-// 	//If the current sample is larger than the average of the samples and less than the last
-// 	//sample, a local peak has occurred, so set samplePeak to 1.
-// 	if(currentSample > (sampleAverage + micSensitivity) && (currentSample < previousSample)){
-// 		samplePeak = true;
-// 	}
+	//If the current sample is larger than the average of the samples and less than the last
+	//sample, a local peak has occurred, so set samplePeak to 1.
+	if(currentSample > (sampleAverage + micSensitivity) && (currentSample < previousSample)){
+		samplePeak = true;
+	}
 
-// 	previousSample = currentSample;
+	previousSample = currentSample;
 
-// 	DEBUG_PRINTLN(String("The currentSample is: ") + currentSample + String(" and samplePeak is: ") + samplePeak);
-// }
-
-int currentSample;
-
-void soundmems() {
-
-  currentSample = analogRead(MICPIN);
-
-  DEBUG_PRINT("The current mic sample is: ");
-  DEBUG_PRINTLN(currentSample);
+	DEBUG_PRINTLN(String("The currentSample is: ") + currentSample + String(" and samplePeak is: ") + samplePeak);
 }
+
+// int currentSample;
+
+// void soundmems() {
+
+//   currentSample = analogRead(MICPIN);
+
+//   DEBUG_PRINT("The current mic sample is: ");
+//   DEBUG_PRINTLN(currentSample);
+// }
 
 
 ////////////////////////////////////////////////////////////////////////////////
