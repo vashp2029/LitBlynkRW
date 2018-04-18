@@ -110,6 +110,9 @@ Dusk2Dawn atlantaSun(LATITUDE, LONGITUDE, TIMEZONE);
 WiFiManager wifiManager;
 struct CRGB leds[NUMLEDS];
 CRGB currentRGB(currentRed, currentGreen, currentBlue);
+CRGBPalette16 currentPalette;
+CRGBPalette16 targetPalette;
+TBlendType currentBlending;
 WS2812FX ws2812fx = WS2812FX(NUMLEDS, DATAPIN, NEO_GRB + NEO_KHZ800);
 
 //This will store strings to be easily called later if needed for something like
@@ -528,8 +531,8 @@ void populateLists(){
 
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
-	soundEffectsList.add("Sound Bracelet");
-	soundEffectsList.add("No Effect");
+	soundEffectsList.add("Bracelet");
+	soundEffectsList.add("Random Noise");
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
 
@@ -714,7 +717,7 @@ void loop(){
 					soundBracelet();
 					break;
 				case 2:
-					//someEffect();
+					soundFillNoise();
 					break;
 			}
 		}
@@ -934,5 +937,64 @@ void soundBracelet(){
 		peakCount = 0;
 	}
 	
+	fastLedImplementer();
+}
+
+// SOUND FILL NOISE ////////////////////////////////////////////////////////////
+int16_t xdist;
+int16_t ydist;
+
+uint8_t maxChanges = 24;
+
+uint16_t xscale = 30;
+uint16_t yscale = 30;
+
+void soundFillNoise(){
+	soundmems();
+
+	currentPalette = OceanColors_p;
+	targetPalette = LavaColors_p;
+	currentBlending = LINEARBLEND;
+
+	EVERY_N_MILLISECONDS(10){
+		//Blend the current palette into the target palette iterating maxChanges times.
+		nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
+
+		//If the average sound value is greater than the number of LEDs, set it equal
+		//to the number of LEDs so we're only lighting what we have.
+		if(arrayAverage > NUMLEDS) arrayAverage = NUMLEDS;
+
+		//This makes the wideness of the section of LEDs that lights up scale based on
+		//the value of the average sound and the number of LEDs. 
+		for(int i = (NUMLEDS - arrayAverage)/2; i < (NUMLEDS + arrayAverage)/2; i++){
+			uint8_t index = inoise8(i * arrayAverage + xdist, i * arrayAverage + ydist);
+
+			leds[i] = ColorFromPalette(currentPalette, index, arrayAverage, currentBlending);
+		}
+
+		//Generate some random numbers.
+		xdist = xdist + beatsin8(5, 0, 3);
+		ydist = ydist + beatsin8(4, 0, 3);
+
+		//Dim all the LEDs by 1. If a sound is not heard on the next loop, this will dim again
+		//and so on until LEDs are off.
+		fadeToBlackBy(leds, NUMLEDS, 1);
+
+		//Shift all pixels past the middle pixel towards the ending pixel.
+		for(uint8_t i = NUMLEDS - 1; i > NUMLEDS/2; i--){
+			leds[i] = leds[i - 1];
+		}
+
+		//Shift all pixels before the middle pixel towards the starting pixel.
+		for(uint8_t i = 0; i < NUMLEDS/2; i++){
+			leds[i] = leds[i + 1];
+		}
+	}
+
+	EVERY_N_MILLISECONDS(5){
+		//Every 5 seconds, change the targetPalette to a randomly generated palette.
+		targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+	}
+
 	fastLedImplementer();
 }
