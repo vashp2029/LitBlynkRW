@@ -795,18 +795,18 @@ void ws2812fxImplementer(){
 }
 
 // MIC READING /////////////////////////////////////////////////////////////////
-bool peakOccured = false; 				//True = a local peak ocurred
+bool peakOccured 		= false;		//True = a local peak ocurred
 
-uint8_t overshootLeds = NUMLEDS + 2; 	//Allow effect to overshoot the length of the LED strip
-uint8_t sampleNumber = 0; 				//Location in sampleArray to iterate over
+uint8_t overshootLeds 	= NUMLEDS + 2; 	//Allow effect to overshoot the LED strip
+uint8_t sampleNumber 	= 0;			//Location in sampleArray to iterate over
 
-uint16_t currentSample; 				//Most current value read from the mic
-uint16_t previousSample; 				//Previous value read from the mic
-uint16_t dampSample; 					//Dampened value for currentSample to prevent twitchy look
-uint16_t minSoundLevel; 				//Minimum of the values stored in sampleArray
-uint16_t maxSoundLevel; 				//Maximum of the values stored in sampleArray
-uint16_t dampMin; 						//Dampened value of minSoundLevel to prevent twitchy look
-uint16_t dampMax; 						//Dampened value of maxSoundLevel to prevent twitchy look
+uint16_t currentSample 	= 0; 			//Most current value read from the mic
+uint16_t previousSample = 0;			//Previous value read from the mic
+uint16_t dampSample 	= 0;			//Dampened value for currentSample to prevent twitchy look
+uint16_t minSoundLevel 	= 0;			//Minimum of the values stored in sampleArray
+uint16_t maxSoundLevel 	= 0;			//Maximum of the values stored in sampleArray
+uint16_t dampMin 		= 0;			//Dampened value of minSoundLevel to prevent twitchy look
+uint16_t dampMax 		= 0;			//Dampened value of maxSoundLevel to prevent twitchy look
 
 int sampleArray[SOUNDSAMPLES];			//An array to store previously read mic values
 
@@ -822,10 +822,8 @@ void soundmems(){
 	sampleNumber++;
 	
 	//To get a dampened value, multiply dampSample by 7 and add the current sample
-	//to make it seem as though you have 8 samples, then devide by 8 using bitwise
-	//shift (bitwise shift to the right is the same as dividing by 2^x, to the left
-	//is the same as multiplying 2^x).
-	dampSample = ((dampSample * 7) + currentSample) >> 3;
+	//to make it seem as though you have 8 samples, then devide by 8.
+	dampSample = ((dampSample * 7) + currentSample)/8;
 	
 	//If the number of iterations since starting from the beginning of the array
 	//is greater than the size of the array, start iteratiing from 0 again.
@@ -850,9 +848,7 @@ void soundmems(){
 	//Dampening for the minimum and maximum values. Multiply the current averages by
 	//SOUNDSAMPLES minus 1, then add the current minSoundLevel. Basically, pretend you
 	//took 64 samples for min/max so that even if the min/max changes dramatically
-	//for a second, it shouldn't effect the lights much. Then, use bitwise shifting
-	//to divide by the number of SOUNDSAMPLES. FYI, bitwise shift by "x" is the same as
-	//dividing by 2^x. 
+	//for a second, it shouldn't effect the lights much. Then, divide by 64 to get the average.
 	dampMin = (dampMin * (SOUNDSAMPLES - 1) + minSoundLevel)/SOUNDSAMPLES;
 	dampMax = (dampMax * (SOUNDSAMPLES - 1) + maxSoundLevel)/SOUNDSAMPLES;
 	
