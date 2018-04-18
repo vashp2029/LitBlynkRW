@@ -795,6 +795,8 @@ void ws2812fxImplementer(){
 }
 
 // MIC READING /////////////////////////////////////////////////////////////////
+int sampleArray[SOUNDSAMPLES];			//An array to store previously read mic values
+
 bool peakOccured 		= false;		//True = a local peak ocurred
 
 uint8_t overshootLeds 	= NUMLEDS + 2; 	//Allow effect to overshoot the LED strip
@@ -807,8 +809,8 @@ uint16_t minSoundLevel 	= 0;			//Minimum of the values stored in sampleArray
 uint16_t maxSoundLevel 	= 0;			//Maximum of the values stored in sampleArray
 uint16_t dampMin 		= 0;			//Dampened value of minSoundLevel to prevent twitchy look
 uint16_t dampMax 		= 0;			//Dampened value of maxSoundLevel to prevent twitchy look
-
-int sampleArray[SOUNDSAMPLES];			//An array to store previously read mic values
+uint16_t arraySum		= 0;			//Keep a sum of the values stored in sampleArray
+uint16_t arrayAverage	= 0;			//Keep an average of the values stored in sampleArray
 
 void soundmems(){
 	
@@ -820,6 +822,16 @@ void soundmems(){
 	
 	sampleArray[sampleNumber] = currentSample;
 	sampleNumber++;
+
+	//Initiate a new variable 'sum' on each iteration of soundmems and use it to
+	//calculate the sum of the values in the array of values.
+	for(uint8_t h = 0; h < SOUNDSAMPLES - 1; h++){
+		uint16_t sum;
+		sum = sum + sampleArray[h];
+
+		arraySum = sum;
+		arrayAverage = sum/SOUNDSAMPLES;
+	}
 	
 	//To get a dampened value, multiply dampSample by 7 and add the current sample
 	//to make it seem as though you have 8 samples, then devide by 8.
@@ -884,10 +896,10 @@ void ledsOff(){
 void soundBracelet(){
 	soundmems();
 	
-	uint16_t barLength; 		//Length of the portion of strip to light up
-	uint16_t peakLength; 		//Location of the peak dot
-	uint16_t peakCount = 0; 	//Keep a count of frames since peak was drawn
-	uint16_t peakFallRate = 10; //Number of frames until peak starts falling
+	uint16_t barLength 		= 0;	//Length of the portion of strip to light up
+	uint16_t peakLength 	= 0;	//Location of the peak dot
+	uint16_t peakCount 		= 0;	//Keep a count of frames since peak was drawn
+	uint16_t peakFallRate 	= 10;	//Number of frames until peak starts falling
 	
 	//Scale the difference between the dampened current sample and the dampened minimum
 	//to the difference between the dampened maximum and dampened minimum.
