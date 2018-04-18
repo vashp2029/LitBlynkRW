@@ -68,7 +68,7 @@
 #define LONGITUDE		-84.071300 	//For sunrise/sunset functions
 #define TIMEZONE		-5 			//For sunrise/sunset functions
 
-#define DCOFFSET		512			//Offset the waveform above or below the zero line
+#define DCOFFSET		300			//Offset the waveform above or below the zero line
 #define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
@@ -527,7 +527,7 @@ void populateLists(){
 
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
-	soundEffectsList.add("Testing");
+	soundEffectsList.add("Sound Bracelet");
 	soundEffectsList.add("No Effect");
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
@@ -708,11 +708,9 @@ void loop(){
 		//If a sound-reactive effect is selected, run soundmems to read microphone
 		//before going into the effect function to react.
 		else if(selectedSoundEffect != 0){
-			soundmems();
-
 			switch(selectedSoundEffect){
 				case 1:
-					//someEffect();
+					soundBracelet();
 					break;
 				case 2:
 					//someEffect();
@@ -797,54 +795,135 @@ void ws2812fxImplementer(){
 }
 
 // MIC READING /////////////////////////////////////////////////////////////////
-bool samplePeak = false;
-int16_t currentSample = 0;
-int16_t previousSample = 0;
-int16_t sampleArray[SOUNDSAMPLES];
-uint16_t sampleSum = 0;
-uint16_t sampleAverage = 0;
-uint16_t sampleCount = 0;
+bool peakOccured = false; 				//True = a local peak ocurred
+
+uint8_t overshootLeds = NUMLEDS + 2; 	//Allow effect to overshoot the length of the LED strip
+uint8_t sampleNumber = 0; 				//Location in sampleArray to iterate over
+
+uint16_t currentSample; 				//Most current value read from the mic
+uint16_t previousSample; 				//Previous value read from the mic
+uint16_t dampSample; 					//Dampened value for currentSample to prevent twitchy look
+uint16_t minSoundLevel; 				//Minimum of the values stored in sampleArray
+uint16_t maxSoundLevel; 				//Maximum of the values stored in sampleArray
+uint16_t dampMin; 						//Dampened value of minSoundLevel to prevent twitchy look
+uint16_t dampMax; 						//Dampened value of maxSoundLevel to prevent twitchy look
+
+int sampleArray[SOUNDSAMPLES];			//An array to store previously read mic values
 
 void soundmems(){
-	//Read the current mic value and store it to currentSample.
+	
+	//Read current mic value and append it to the end of the array. Iterate
+	//sampleNumber to prep for adding next value to the next position in the array.
 	currentSample = abs(analogRead(MICPIN) - DCOFFSET);
-
-	//If the current sample of sound is below the threshold required by the sensitivity
-	//setting, just set it to 0 and pretend there was no sound.
+	
 	if(currentSample < micSensitivity) currentSample = 0;
-
-	//Add the currentSample to the sum of samples and subtract the oldest sample from the array.
-	//This will keep a summation of the samples in the array (subtracting the oldest sample
-	//which will be removed in the next bit).
-	sampleSum = sampleSum + currentSample - sampleArray[sampleCount];
-	sampleAverage = sampleSum/SOUNDSAMPLES;
-
-	//Remove the oldest sample from the array and replace it with the new one.
-	sampleArray[sampleCount] = currentSample;
-
-	//This will iterate sampleCount up by 1 until it gets to SOUNDSAMPLES, then start over.
-	sampleCount = (sampleCount + 1) % SOUNDSAMPLES;
-
-	//If the current sample is larger than the average of the samples and less than the last
-	//sample, a local peak has occurred, so set samplePeak to 1.
-	if(currentSample > (sampleAverage + micSensitivity) && (currentSample < previousSample)){
-		samplePeak = true;
+	
+	sampleArray[sampleNumber] = currentSample;
+	sampleNumber++;
+	
+	//To get a dampened value, multiply dampSample by 7 and add the current sample
+	//to make it seem as though you have 8 samples, then devide by 8 using bitwise
+	//shift (bitwise shift to the right is the same as dividing by 2^x, to the left
+	//is the same as multiplying 2^x).
+	dampSample = ((dampSample * 7) + currentSample) >> 3;
+	
+	//If the number of iterations since starting from the beginning of the array
+	//is greater than the size of the array, start iteratiing from 0 again.
+	if(sampleNumber > (SOUNDSAMPLES - 1)) sampleNumber = 0;
+	
+	//Set the minimum and maximum values we've heard so far to the value at position
+	//0 in the array. This is just to initiate min and max levels at some value.
+	minSoundLevel = maxSoundLevel = sampleArray[0];
+	
+	//Iterated over the entire array and set the lowest value found as minSoundLevel,
+	//and the highest value as maxSoundLevel.
+	for(uint8_t i = 1; i < SOUNDSAMPLES; i++){
+		if(sampleArray[i] < minSoundLevel) minSoundLevel = sampleArray[i];
+		else if(sampleArray[i] > maxSoundLevel) maxSoundLevel = sampleArray[i];
 	}
-
+	
+	//If the difference between minSoundLevel and maxSoundLevel is smaller than the
+	//length of the LEDs (or however much you want to overshoot them), then set the max
+	//to be equal to the min plus length of LEDs (or however much you want to overshoot).
+	if((maxSoundLevel - minSoundLevel) < overshootLeds) maxSoundLevel = minSoundLevel + overshootLeds;
+	
+	//Dampening for the minimum and maximum values. Multiply the current averages by
+	//SOUNDSAMPLES minus 1, then add the current minSoundLevel. Basically, pretend you
+	//took 64 samples for min/max so that even if the min/max changes dramatically
+	//for a second, it shouldn't effect the lights much. Then, use bitwise shifting
+	//to divide by the number of SOUNDSAMPLES. FYI, bitwise shift by "x" is the same as
+	//dividing by 2^x. 
+	dampMin = (dampMin * (SOUNDSAMPLES - 1) + minSoundLevel)/SOUNDSAMPLES;
+	dampMax = (dampMax * (SOUNDSAMPLES - 1) + maxSoundLevel)/SOUNDSAMPLES;
+	
+	if(currentSample > (dampSample + micSensitivity) && (currentSample < previousSample)){
+		peakOccured = true;
+	}
+	
 	previousSample = currentSample;
 
-	//Uncomment if you need to see raw mic values.
-	//DEBUG_PRINTLN(String("The currentSample is: ") + currentSample + String(" and samplePeak is: ") + samplePeak);
+	//Uncomment if you need raw values of mic readings printed to serial.
+	//DEBUG_PRINTLN(String("Current Sample: ") + currentSample + String(", Dampened: ") + dampSample);
 }
 
 
 
 
 ////////////////////////////////////////////////////////////////////////////////
-//EFFECT FUNCTIONS                                                            //
+//NORMAL FASTLED EFFECT FUNCTIONS                                             //
 ////////////////////////////////////////////////////////////////////////////////
 // LEDS OFF ////////////////////////////////////////////////////////////////////
 void ledsOff(){
 	FastLED.clear();
+	fastLedImplementer();
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//FASTLED SOUND REACTIVE EFFECT FUNCTIONS                                     //
+////////////////////////////////////////////////////////////////////////////////
+// SOUND BRACELET //////////////////////////////////////////////////////////////
+void soundBracelet(){
+	soundmems();
+	
+	uint16_t barLength; 		//Length of the portion of strip to light up
+	uint16_t peakLength; 		//Location of the peak dot
+	uint16_t peakCount = 0; 	//Keep a count of frames since peak was drawn
+	uint16_t peakFallRate = 10; //Number of frames until peak starts falling
+	
+	//Scale the difference between the dampened current sample and the dampened minimum
+	//to the difference between the dampened maximum and dampened minimum.
+	barLength = overshootLeds * (dampSample - dampMin)/(long)(dampMax - dampMin);
+	
+	
+	//Compensate for barLength being less than 0 (e.g. less than 0 LEDs) or more than
+	//overshootLeds (e.g. more than 152 LEDs if NUMLEDS is 150). 
+	if(barLength < 0L) barLength = 0;
+	else if (barLength > overshootLeds) barLength = overshootLeds;
+	
+	//If the barLength is greater than where the peak last occured, this will be the new
+	//peak.
+	if(barLength > peakLength) peakLength = barLength;
+	
+	//Fill the number of LEDs equal to barLength with colors, and anything over that with
+	//black.
+	for (uint8_t i=0; i<NUMLEDS; i++){
+		if(i >= barLength) leds[i].setRGB(0, 0, 0);
+		else leds[i] = CHSV(map(i, 0, NUMLEDS - 1, 30, 150), 255, 255);
+	}
+	
+	//Draw the peak dot.
+	if(peakLength > 0 && peakLength <= NUMLEDS - 1){
+		leds[peakLength] = CHSV(map(peakLength, 0, NUMLEDS - 1, 30, 150), 255, 255);
+	}
+	
+	//Drop the peak dot every few frames.
+	if(++peakCount >= peakFallRate){
+		if(peakLength > 0) peakLength--;
+		peakCount = 0;
+	}
+	
 	fastLedImplementer();
 }
