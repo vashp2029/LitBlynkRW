@@ -69,6 +69,7 @@
 #define TIMEZONE		-5 			//For sunrise/sunset functions
 
 #define DCOFFSET		300			//Offset the waveform above or below the zero line
+#define NOISE 			85			//Ambient noise in the room
 #define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
@@ -816,7 +817,7 @@ void soundmems(){
 	
 	//Read current mic value and append it to the end of the array. Iterate
 	//sampleNumber to prep for adding next value to the next position in the array.
-	currentSample = abs(analogRead(MICPIN) - DCOFFSET);
+	currentSample = abs(abs(analogRead(MICPIN) - DCOFFSET) - NOISE);
 	
 	if(currentSample < micSensitivity) currentSample = 0;
 	
@@ -924,7 +925,7 @@ void soundBracelet(){
 	
 	//Draw the peak dot.
 	if(peakLength > 0 && peakLength <= NUMLEDS - 1){
-		leds[peakLength] = CHSV(map(peakLength, 0, NUMLEDS - 1, 30, 150), 255, 255);
+		leds[peakLength] = CHSV(map(peakLength, 0, NUMLEDS - 1, 0, 150), 255, 255);
 	}
 	
 	//Drop the peak dot every few frames.
