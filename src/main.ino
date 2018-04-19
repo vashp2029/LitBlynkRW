@@ -115,8 +115,8 @@ WS2812FX ws2812fx = WS2812FX(NUMLEDS, DATAPIN, NEO_GRB + NEO_KHZ800);
 //This will store strings to be easily called later if needed for something like
 //the Blynk.setProperty function to populate a drop down menu in Blynk.
 BlynkParamAllocated effectsList(512);
-BlynkParamAllocated soundEffectsList(512);
-BlynkParamAllocated ledGroupsList(128);
+BlynkParamAllocated soundEffectsList(128);
+BlynkParamAllocated ledGroupsList(64);
 
 
 
@@ -494,12 +494,23 @@ BLYNK_WRITE(GROUPPIN){
 //SETUP FUNCTIONS                                                             //
 ////////////////////////////////////////////////////////////////////////////////
 //BEFOREUPLOAD Make sure all effects and groups are listed below.
+
 void populateLists(){
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
 	//My Effects
-	effectsList.add("Sunrise/Sunset");
-	effectsList.add("Thisothereffect");
+	effectsList.add("Sun");
+	effectsList.add("Beatwave");
+	effectsList.add("Blendwave");
+	effectsList.add("Dotbeat");
+	effectsList.add("Confetti");
+	effectsList.add("Mirrored Fire");
+	effectsList.add("Juggle");
+	effectsList.add("Lightning");
+	effectsList.add("Plasma");
+	effectsList.add("Rainbow Beat");
+	effectsList.add("Rainbow March");
+	effectsList.add("Sinelon");
 
 	//WS2812FX Effects
 	effectsList.add("Solid Color");
@@ -524,22 +535,26 @@ void populateLists(){
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
 
-
-
 	DEBUG_PRINTLN("Populating 'effectsList' with effects.");
 
+	//Sound-reactive Effects
 	soundEffectsList.add("Bracelet");
 	soundEffectsList.add("Random Noise");
 	soundEffectsList.add("Juggle");
 	soundEffectsList.add("Matrix");
 	soundEffectsList.add("Fire");
+	soundEffectsList.add("Sine Wave");
+	soundEffectsList.add("Pixel");
+	soundEffectsList.add("Plasma");
+	soundEffectsList.add("Rainbow Bit");
+	soundEffectsList.add("Rainbow Gradient");
+	soundEffectsList.add("Ripple");
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
 
+	DEBUG_PRINTLN("Populating 'ledGroupList' with LED Groups.");
 
-
-	DEBUG_PRINTLN("Populating 'ledGroupList' with effects.");
-
+	//LED Groups
 	ledGroupsList.add("All");
 	ledGroupsList.add("Bed");
 	ledGroupsList.add("Couch");
@@ -697,15 +712,19 @@ void loop(){
 			//function where there is another switch statement to choose effects from the
 			//WS2812FX library.
 			switch(selectedEffect){
-				case 1:
-					//sunriseSunset());
-					break;
-				case 2:
-					//someEffect();
-					break;
-				default:
-					ws2812fxImplementer();
-					break;
+				case 1:		//sunriseSunset();		break;
+				case 2:		beatWave(); 			break;
+				case 3:		blendWave(); 			break;
+				case 4:		confetti();				break;
+				case 5:		dotBeat();				break;
+				case 6:		mirroredFire();			break;
+				case 7:		juggle();				break;
+				case 8:		lightning(); 			break;
+				case 9:		plasma();				break;
+				case 10:	rainbowBeat();			break;
+				case 11:	rainbowMarch();			break;
+				case 12:	sinelon();				break;
+				default:	ws2812fxImplementer();	break;
 			}
 		}
 
@@ -713,21 +732,17 @@ void loop(){
 		//before going into the effect function to react.
 		else if(selectedSoundEffect != 0){
 			switch(selectedSoundEffect){
-				case 1:
-					soundBracelet();
-					break;
-				case 2:
-					soundFillNoise();
-					break;
-				case 3:
-					soundJuggle();
-					break;
-				case 4:
-					soundMatrix();
-					break;
-				case 5:
-					soundFire();
-					break;
+				case 1:		soundBracelet();		break;
+				case 2:		soundFillNoise();		break;
+				case 3:		soundJuggle();			break;
+				case 4:		soundMatrix();			break;
+				case 5:		soundFire();			break;
+				case 6:		soundSineWave();		break;
+				case 7:		soundPixel();			break;
+				case 8:		soundPlasma();			break;
+				case 9:		soundRainbowBit();		break;
+				case 10:	soundRainbowGradient();	break;
+				case 11:	soundRipple();			break;
 			}
 		}
 	}
@@ -774,25 +789,25 @@ void ws2812fxImplementer(){
 		//BEFOREUPLOAD 1 and case 2 defined in the main loop as FastLED functions, start
 		//BEFOREUPLOAD these at case 3.
 		switch(selectedEffect){
-			case 3:		ws2812fx.setMode(FX_MODE_STATIC);					break;
-			case 4: 	ws2812fx.setMode(FX_MODE_BLINK);					break;
-			case 5: 	ws2812fx.setMode(FX_MODE_COLOR_WIPE_RANDOM);		break;
-			case 6: 	ws2812fx.setMode(FX_MODE_RAINBOW);					break;
-			case 7: 	ws2812fx.setMode(FX_MODE_RAINBOW_CYCLE);			break;
-			case 8: 	ws2812fx.setMode(FX_MODE_SCAN);						break;
-			case 9: 	ws2812fx.setMode(FX_MODE_DUAL_SCAN);				break;
-			case 10: 	ws2812fx.setMode(FX_MODE_FADE);						break;
-			case 11: 	ws2812fx.setMode(FX_MODE_CHASE_COLOR);				break;
-			case 12: 	ws2812fx.setMode(FX_MODE_CHASE_RANDOM); 			break;
-			case 13: 	ws2812fx.setMode(FX_MODE_CHASE_RAINBOW);			break;
-			case 14: 	ws2812fx.setMode(FX_MODE_CHASE_BLACKOUT_RAINBOW); 	break;
-			case 15: 	ws2812fx.setMode(FX_MODE_RUNNING_LIGHTS);			break;
-			case 16: 	ws2812fx.setMode(FX_MODE_RUNNING_COLOR); 			break;
-			case 17: 	ws2812fx.setMode(FX_MODE_LARSON_SCANNER); 			break;
-			case 18: 	ws2812fx.setMode(FX_MODE_COMET); 					break;
-			case 19: 	ws2812fx.setMode(FX_MODE_FIREWORKS_RANDOM); 		break;
-			case 20: 	ws2812fx.setMode(FX_MODE_MERRY_CHRISTMAS); 			break;
-			case 21: 	ws2812fx.setMode(FX_MODE_HALLOWEEN); 				break;
+			case 13:	ws2812fx.setMode(FX_MODE_STATIC);					break;
+			case 14: 	ws2812fx.setMode(FX_MODE_BLINK);					break;
+			case 15: 	ws2812fx.setMode(FX_MODE_COLOR_WIPE_RANDOM);		break;
+			case 16: 	ws2812fx.setMode(FX_MODE_RAINBOW);					break;
+			case 17: 	ws2812fx.setMode(FX_MODE_RAINBOW_CYCLE);			break;
+			case 18: 	ws2812fx.setMode(FX_MODE_SCAN);						break;
+			case 19: 	ws2812fx.setMode(FX_MODE_DUAL_SCAN);				break;
+			case 20: 	ws2812fx.setMode(FX_MODE_FADE);						break;
+			case 21: 	ws2812fx.setMode(FX_MODE_CHASE_COLOR);				break;
+			case 22: 	ws2812fx.setMode(FX_MODE_CHASE_RANDOM); 			break;
+			case 23: 	ws2812fx.setMode(FX_MODE_CHASE_RAINBOW);			break;
+			case 24: 	ws2812fx.setMode(FX_MODE_CHASE_BLACKOUT_RAINBOW); 	break;
+			case 25: 	ws2812fx.setMode(FX_MODE_RUNNING_LIGHTS);			break;
+			case 26: 	ws2812fx.setMode(FX_MODE_RUNNING_COLOR); 			break;
+			case 27: 	ws2812fx.setMode(FX_MODE_LARSON_SCANNER); 			break;
+			case 28: 	ws2812fx.setMode(FX_MODE_COMET); 					break;
+			case 29: 	ws2812fx.setMode(FX_MODE_FIREWORKS_RANDOM); 		break;
+			case 30: 	ws2812fx.setMode(FX_MODE_MERRY_CHRISTMAS); 			break;
+			case 31: 	ws2812fx.setMode(FX_MODE_HALLOWEEN); 				break;
 			default:	return;
 		}
 
@@ -919,6 +934,39 @@ void ledsOff(){
 	FastLED.clear();
 	fastLedImplementer();
 }
+
+// BEATWAVE ////////////////////////////////////////////////////////////////////
+void beatWave(){}
+
+// BLENDWAVE ///////////////////////////////////////////////////////////////////
+void blendWave(){}
+
+// CONFETTI ////////////////////////////////////////////////////////////////////
+void confetti(){}
+
+// DOT BEAT ////////////////////////////////////////////////////////////////////
+void dotBeat(){}
+
+// MIRRORED FIRE ///////////////////////////////////////////////////////////////
+void mirroredFire(){}
+
+// JUGGLE //////////////////////////////////////////////////////////////////////
+void juggle(){}
+
+// LIGHTNING ///////////////////////////////////////////////////////////////////
+void lightning(){}
+
+// PLASMA //////////////////////////////////////////////////////////////////////
+void plasma(){}
+
+// RAINBOW BEAT ////////////////////////////////////////////////////////////////
+void rainbowBeat(){}
+
+// RAINBOW MARCH ///////////////////////////////////////////////////////////////
+void rainbowMarch(){}
+
+// SINELON /////////////////////////////////////////////////////////////////////
+void sinelon(){}
 
 
 
@@ -1107,6 +1155,24 @@ void soundFire(){
 
 	fastLedImplementer();
 }
+
+// SOUND SINE WAVE /////////////////////////////////////////////////////////////
+void soundSineWave(){}
+
+// SOUND PIXEL /////////////////////////////////////////////////////////////////
+void soundPixel(){}
+
+// SOUND PLASMA ////////////////////////////////////////////////////////////////
+void soundPlasma(){}
+
+// SOUND RAINBOW BIT ///////////////////////////////////////////////////////////
+void soundRainbowBit(){}
+
+// SOUND RAINBOW GRADIENT //////////////////////////////////////////////////////
+void soundRainbowGradient(){}
+
+// SOUND RIPPLE ////////////////////////////////////////////////////////////////
+void soundRipple(){}
 
 
 
