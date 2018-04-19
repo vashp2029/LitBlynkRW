@@ -764,6 +764,11 @@ void loop(){
 //FastLED.show() in the effect functions themselves. This is also going to keep
 //the time updated and keep Blynk running to accept commands.
 void fastLedImplementer(){
+	//FIXIT since a lot of the functions don't have controls for the brightness internally,
+	//FIXIT maybe test adding FastLed.setBrightness(); here and see if it works properly.
+	//FIXIT For example, soundSineWave has an internal brightness value called 'thisbright'
+	//FIXIT so add setBrightness() here and see if that internal brightness still scales
+	//FIXIT within the global brightness here.
 	FastLED.show();
 
 	//If a command is received which requires a change of effect, kill the current
@@ -908,6 +913,9 @@ void soundmems(){
 ////////////////////////////////////////////////////////////////////////////////
 //EFFECT-SPECIFIC GLOBAL VARIABLES                                            //
 ////////////////////////////////////////////////////////////////////////////////
+#define qsubd(x, b) ((x>b)?b:0)
+#define qsuba(x, b) ((x>b)?x-b:0)
+
 int16_t xdist;					//(soundFillNoise)
 int16_t ydist;					//(soundFillNoise)
 
