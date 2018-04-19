@@ -110,9 +110,6 @@ Dusk2Dawn atlantaSun(LATITUDE, LONGITUDE, TIMEZONE);
 WiFiManager wifiManager;
 struct CRGB leds[NUMLEDS];
 CRGB currentRGB(currentRed, currentGreen, currentBlue);
-CRGBPalette16 currentPalette;
-CRGBPalette16 targetPalette;
-TBlendType currentBlending;
 WS2812FX ws2812fx = WS2812FX(NUMLEDS, DATAPIN, NEO_GRB + NEO_KHZ800);
 
 //This will store strings to be easily called later if needed for something like
@@ -533,6 +530,9 @@ void populateLists(){
 
 	soundEffectsList.add("Bracelet");
 	soundEffectsList.add("Random Noise");
+	soundEffectsList.add("Juggle");
+	soundEffectsList.add("Matrix");
+	soundEffectsList.add("Fire");
 
 	DEBUG_PRINTLN("Finished populating 'effectList'.");
 
@@ -719,6 +719,15 @@ void loop(){
 				case 2:
 					soundFillNoise();
 					break;
+				case 3:
+					soundJuggle();
+					break;
+				case 4:
+					soundMatrix();
+					break;
+				case 5:
+					soundFire();
+					break;
 			}
 		}
 	}
@@ -882,6 +891,27 @@ void soundmems(){
 
 
 ////////////////////////////////////////////////////////////////////////////////
+//EFFECT-SPECIFIC GLOBAL VARIABLES                                            //
+////////////////////////////////////////////////////////////////////////////////
+int16_t xdist;					//(soundFillNoise)
+int16_t ydist;					//(soundFillNoise)
+
+uint8_t maxChanges = 24;		//How much to blend one palette to another (higher is less smooth) (soundFillNoise)
+uint8_t currentHue = 0;			//(soundJuggle, soundMatrix)
+
+uint16_t xscale = 30;			//Used for different things in different functions (soundFillNoise, soundNoiseFire)
+uint16_t yscale = 30;			//Used for different things in different functions (soundFillNoise, soundNoiseFire)
+
+int thistime = 20;				//(soundJuggle)
+
+CRGBPalette16 currentPalette;	//Used in a lot of effects
+CRGBPalette16 targetPalette;	//Used in a lot of effects
+TBlendType currentBlending;		//Used in a lot of effects
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 //NORMAL FASTLED EFFECT FUNCTIONS                                             //
 ////////////////////////////////////////////////////////////////////////////////
 // LEDS OFF ////////////////////////////////////////////////////////////////////
@@ -941,15 +971,20 @@ void soundBracelet(){
 }
 
 // SOUND FILL NOISE ////////////////////////////////////////////////////////////
-int16_t xdist;
-int16_t ydist;
-
-uint8_t maxChanges = 24;
-
-uint16_t xscale = 30;
-uint16_t yscale = 30;
-
 void soundFillNoise(){
+	//Reset effect global variables to what is needed for this effect in case
+	//they've been used by other effect functions.
+	if(firstRun == true){
+		firstRun = false;
+
+		xdist = 0;
+		ydist = 0;
+		maxChanges = 24;
+
+		xscale = 30;
+		yscale = 30;
+	}
+
 	soundmems();
 
 	currentPalette = OceanColors_p;
@@ -993,8 +1028,95 @@ void soundFillNoise(){
 
 	EVERY_N_MILLISECONDS(5){
 		//Every 5 seconds, change the targetPalette to a randomly generated palette.
-		targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+		targetPalette = CRGBPalette16(	CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)),
+										CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
 	}
 
 	fastLedImplementer();
+}
+
+// SOUND JUGGLE ////////////////////////////////////////////////////////////////
+void soundJuggle(){
+	if(firstRun == true){
+		firstRun == false;
+		currentHue = 0;
+		thistime = 20;
+	}
+
+	soundmems();
+
+	currentHue = currentHue + 4;
+
+	fadeToBlackBy(leds, NUMLEDS, 12);
+
+	leds[beatsin16(thistime, 0, NUMLEDS - 1, 0, 0)] += ColorFromPalette(currentPalette, currentHue, arrayAverage, currentBlending);
+  	leds[beatsin16(thistime - 3, 0, NUMLEDS - 1, 0, 0)] += ColorFromPalette(currentPalette, currentHue, arrayAverage, currentBlending);
+
+  	EVERY_N_MILLISECONDS(250){
+  		thistime = arrayAverage/2;
+  	}
+
+  	glitter(arrayAverage/2);
+
+  	fastLedImplementer();
+}
+
+// SOUND MATRIX ////////////////////////////////////////////////////////////////
+void soundMatrix(){
+	if(firstRun == true){
+		firstRun == false;
+		currentHue = 0;
+	}
+
+	soundmems();
+
+	leds[0] = ColorFromPalette(currentPalette, currentHue++, arrayAverage, currentBlending);
+
+	for(int i = NUMLEDS - 1; i > 0; i--) leds[i] = leds[i - 1];
+
+	glitter(arrayAverage/2);
+
+	fastLedImplementer();
+}
+
+// SOUND FIRE //////////////////////////////////////////////////////////////////
+void soundFire(){
+	if(firstRun == true){
+		firstRun = false;
+
+		xscale = 20;		//Distance between lit sections
+		yscale = 3;			//Speed that lit sections move
+
+		currentBlending = NOBLEND;
+	}
+
+	uint8_t index = 0;
+
+	soundmems();
+
+	currentPalette = CRGBPalette16(	CHSV(0,255,2), CHSV(0,255,4), CHSV(0,255,8), CHSV(0, 255, 8),
+									CHSV(0, 255, 16), CRGB::Red, CRGB::Red, CRGB::Red,
+									CRGB::DarkOrange, CRGB::DarkOrange, CRGB::Orange, CRGB::Orange,
+									CRGB::Yellow, CRGB::Orange, CRGB::Yellow, CRGB::Yellow);
+
+	for(int i = 0; i < NUMLEDS; i++) {
+    	index = inoise8(i*xscale,currentMillis*yscale*NUMLEDS/255);
+    	index = (255 - i*256/NUMLEDS) * index/128;
+    	leds[i] = ColorFromPalette(currentPalette, index, arrayAverage, currentBlending);
+  	}  
+
+	fastLedImplementer();
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//EFFECT MODIFIERS                                                            //
+////////////////////////////////////////////////////////////////////////////////
+// GLITTER /////////////////////////////////////////////////////////////////////
+void glitter(fract8 chanceOfGlitter){
+	if(random8() < chanceOfGlitter){
+		leds[random16(NUMLEDS)] += CRGB::White;
+	}
 }
