@@ -769,6 +769,7 @@ void fastLedImplementer(){
 	//FIXIT For example, soundSineWave has an internal brightness value called 'thisbright'
 	//FIXIT so add setBrightness() here and see if that internal brightness still scales
 	//FIXIT within the global brightness here.
+	FastLED.setBrightness(brightness);
 	FastLED.show();
 
 	//If a command is received which requires a change of effect, kill the current
@@ -919,13 +920,13 @@ void soundmems(){
 int16_t xdist;					//(soundFillNoise)
 int16_t ydist;					//(soundFillNoise)
 
-uint8_t maxChanges = 24;		//How much to blend one palette to another (higher is less smooth) (soundFillNoise)
-uint8_t currentHue = 0;			//(soundJuggle, soundMatrix)
+uint8_t maxChanges = 24;		//(soundFillNoise)
+uint8_t currentHue = 0;			//(soundJuggle, soundMatrix, soundSineWave)
 
-uint16_t xscale = 30;			//Used for different things in different functions (soundFillNoise, soundNoiseFire)
-uint16_t yscale = 30;			//Used for different things in different functions (soundFillNoise, soundNoiseFire)
+uint16_t xscale = 30;			//(soundBracelet, soundFillNoise, soundNoiseFire, soundSineWave)
+uint16_t yscale = 30;			//(soundBracelet, soundFillNoise, soundNoiseFire, soundSineWave)
 
-int thistime = 20;				//(soundJuggle)
+int thistime = 20;				//(soundJuggle, soundSineWave)
 
 CRGBPalette16 currentPalette;	//Used in a lot of effects
 CRGBPalette16 targetPalette;	//Used in a lot of effects
@@ -984,42 +985,47 @@ void sinelon(){}
 ////////////////////////////////////////////////////////////////////////////////
 // SOUND BRACELET //////////////////////////////////////////////////////////////
 void soundBracelet(){
-	soundmems();
-	
-	uint16_t barLength 		= 0;	//Length of the portion of strip to light up
-	uint16_t peakLength 	= 0;	//Location of the peak dot
+	if(firstRun == true){
+		firstRun = false;
+
+		xscale = 0;					//Length of the portion of strip to light up
+		yscale = 0;					//Location of the peak dot
+	}
+
 	uint16_t peakCount 		= 0;	//Keep a count of frames since peak was drawn
 	uint16_t peakFallRate 	= 10;	//Number of frames until peak starts falling
+
+	soundmems();
 	
 	//Scale the difference between the dampened current sample and the dampened minimum
 	//to the difference between the dampened maximum and dampened minimum.
-	barLength = overshootLeds * (dampSample - dampMin)/(long)(dampMax - dampMin);
+	xscale = overshootLeds * (dampSample - dampMin)/(long)(dampMax - dampMin);
 	
 	
-	//Compensate for barLength being less than 0 (e.g. less than 0 LEDs) or more than
+	//Compensate for xscale being less than 0 (e.g. less than 0 LEDs) or more than
 	//overshootLeds (e.g. more than 152 LEDs if NUMLEDS is 150). 
-	if(barLength < 0L) barLength = 0;
-	else if (barLength > overshootLeds) barLength = overshootLeds;
+	if(xscale < 0L) xscale = 0;
+	else if (xscale > overshootLeds) xscale = overshootLeds;
 	
-	//If the barLength is greater than where the peak last occured, this will be the new
+	//If the xscale is greater than where the peak last occured, this will be the new
 	//peak.
-	if(barLength > peakLength) peakLength = barLength;
+	if(xscale > yscale) yscale = xscale;
 	
-	//Fill the number of LEDs equal to barLength with colors, and anything over that with
+	//Fill the number of LEDs equal to xscale with colors, and anything over that with
 	//black.
 	for (uint8_t i=0; i<NUMLEDS; i++){
-		if(i >= barLength) leds[i].setRGB(0, 0, 0);
-		else leds[i] = CHSV(map(i, 0, NUMLEDS - 1, 30, 150), 255, 255);
+		if(i >= xscale) leds[i].setRGB(0, 0, 0);
+		else leds[i] = CHSV(map(i, 0, NUMLEDS - 1, 0, 150), 255, 255);
 	}
 	
 	//Draw the peak dot.
-	if(peakLength > 0 && peakLength <= NUMLEDS - 1){
-		leds[peakLength] = CHSV(map(peakLength, 0, NUMLEDS - 1, 0, 150), 255, 255);
+	if(yscale > 0 && yscale <= NUMLEDS - 1){
+		leds[yscale] = CHSV(map(yscale, 0, NUMLEDS - 1, 0, 150), 255, 255);
 	}
 	
 	//Drop the peak dot every few frames.
 	if(++peakCount >= peakFallRate){
-		if(peakLength > 0) peakLength--;
+		if(yscale > 0) yscale--;
 		peakCount = 0;
 	}
 	
@@ -1027,6 +1033,7 @@ void soundBracelet(){
 }
 
 // SOUND FILL NOISE ////////////////////////////////////////////////////////////
+//FIXIT Works but crappy effect.
 void soundFillNoise(){
 	//Reset effect global variables to what is needed for this effect in case
 	//they've been used by other effect functions.
@@ -1071,15 +1078,7 @@ void soundFillNoise(){
 		//and so on until LEDs are off.
 		fadeToBlackBy(leds, NUMLEDS, 1);
 
-		//Shift all pixels past the middle pixel towards the ending pixel.
-		for(uint8_t i = NUMLEDS - 1; i > NUMLEDS/2; i--){
-			leds[i] = leds[i - 1];
-		}
-
-		//Shift all pixels before the middle pixel towards the starting pixel.
-		for(uint8_t i = 0; i < NUMLEDS/2; i++){
-			leds[i] = leds[i + 1];
-		}
+		waveFromMiddle();
 	}
 
 	EVERY_N_MILLISECONDS(5){
@@ -1092,6 +1091,7 @@ void soundFillNoise(){
 }
 
 // SOUND JUGGLE ////////////////////////////////////////////////////////////////
+//FIXIT Doesn't work.
 void soundJuggle(){
 	if(firstRun == true){
 		firstRun == false;
@@ -1118,6 +1118,7 @@ void soundJuggle(){
 }
 
 // SOUND MATRIX ////////////////////////////////////////////////////////////////
+//FIXIT reacts to sound but colors kind of suck.
 void soundMatrix(){
 	if(firstRun == true){
 		firstRun == false;
@@ -1136,6 +1137,7 @@ void soundMatrix(){
 }
 
 // SOUND FIRE //////////////////////////////////////////////////////////////////
+//FIXIT Doesn't work.
 void soundFire(){
 	if(firstRun == true){
 		firstRun = false;
@@ -1165,10 +1167,59 @@ void soundFire(){
 }
 
 // SOUND SINE WAVE /////////////////////////////////////////////////////////////
-void soundSineWave(){}
+void soundSineWave(){
+	if(firstRun == true){
+		firstRun = false;
+
+		maxChanges = 24;
+
+		currentPalette = OceanColors_p;
+		targetPalette = PartyColors_p;
+		currentBlending = LINEARBLEND;
+	}
+
+	EVERY_N_SECONDS(5){
+		for(int i = 0; i < 16; i++){
+			targetPalette[i] = CHSV(random8(), 255, 255);
+		}
+	}
+
+	EVERY_N_MILLISECONDS(100){
+		nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
+	}
+
+	EVERY_N_MILLIS_I(thistimer, 20){
+		uint8_t timeval = beatsin8(10, 20, 50);
+		thistimer.setPeriod(timeval);
+		fadeToBlackBy(leds, NUMLEDS, 16);
+
+		waveFromMiddle();
+		soundmems();
+	}
+
+	fastLedImplementer();
+}
 
 // SOUND PIXEL /////////////////////////////////////////////////////////////////
-void soundPixel(){}
+void soundPixel(){
+	if(firstRun == true){
+		firstRun = false;
+	}
+
+	static uint16_t currentLed;		//Keep count of the current LED location
+
+	soundmems();
+
+	currentLed = (currentLed + 1) % (NUMLEDS - 1);	//Cycle this function through each LED
+
+	//FIXIT Atuline's code has previousSample as the 2nd and 3rd arguments here, but his comment
+	//FIXIT implies that the third argument should be the arrayAverage, test it and change it if
+	//FIXIT need be.
+	CRGB newcolor = ColorFromPalette(currentPalette, previousSample, previousSample, currentBlending);
+	nblend(leds[currentLed], newcolor, 192);
+
+	fastLedImplementer();
+}
 
 // SOUND PLASMA ////////////////////////////////////////////////////////////////
 void soundPlasma(){}
@@ -1192,5 +1243,19 @@ void soundRipple(){}
 void glitter(fract8 chanceOfGlitter){
 	if(random8() < chanceOfGlitter){
 		leds[random16(NUMLEDS)] += CRGB::White;
+	}
+}
+
+void waveFromMiddle(){
+	leds[NUMLEDS/2] = ColorFromPalette(currentPalette, currentSample, currentSample * 2, currentBlending);
+
+	//Shift all pixels past the middle pixel towards the ending pixel.
+	for(uint8_t i = NUMLEDS - 1; i > NUMLEDS/2; i--){
+		leds[i] = leds[i - 1];
+	}
+
+	//Shift all pixels before the middle pixel towards the starting pixel.
+	for(uint8_t i = 0; i < NUMLEDS/2; i++){
+		leds[i] = leds[i + 1];
 	}
 }
