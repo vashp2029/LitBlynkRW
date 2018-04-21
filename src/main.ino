@@ -69,7 +69,7 @@
 #define TIMEZONE		-5 			//For sunrise/sunset functions
 
 #define DCOFFSET		300			//Offset the waveform above or below the zero line
-#define NOISE 			85			//Ambient noise in the room
+#define NOISE 			0			//Ambient noise in the room
 #define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
@@ -831,7 +831,7 @@ void ws2812fxImplementer(){
 // MIC READING /////////////////////////////////////////////////////////////////
 int sampleArray[SOUNDSAMPLES];			//An array to store previously read mic values
 
-bool peakOccured 		= false;		//True = a local peak ocurred
+bool peakOccurred 		= false;		//True = a local peak ocurred
 
 uint8_t overshootLeds 	= NUMLEDS + 2; 	//Allow effect to overshoot the LED strip
 uint8_t sampleNumber 	= 0;			//Location in sampleArray to iterate over
@@ -899,7 +899,7 @@ void soundmems(){
 	dampMax = (dampMax * (SOUNDSAMPLES - 1) + maxSoundLevel)/SOUNDSAMPLES;
 	
 	if(currentSample > (dampSample + micSensitivity) && (currentSample < previousSample)){
-		peakOccured = true;
+		peakOccurred = true;
 	}
 	
 	previousSample = currentSample;
