@@ -1059,7 +1059,6 @@ void soundBracelet(){
 }
 
 // SOUND FILL NOISE ////////////////////////////////////////////////////////////
-//FIXIT Works but crappy effect.
 void soundFillNoise(){
 	//Reset effect global variables to what is needed for this effect in case
 	//they've been used by other effect functions.
@@ -1163,7 +1162,33 @@ void soundSineWave(){
 	if(firstRun == true){
 		firstRun = false;
 
+		xscale = 32; //Atuline allfreq
+		yscale = 192; //Atuline thiscutoff
+		currentHue = 0; //Atuine bgclr
+		xdist = 10; //Atuline bgbright
+		thisIndex = 0; //Atuline colorIndex
+		timeval = 30;
 	}
+
+	static int thisphase = 0;
+
+	yscale = beatsin8(12, 64, 224);
+
+	thisphase += arrayAverage/2;
+
+	thisIndex = currentMillis >> 4;
+
+	for(int k = 0; NUMLEDS - 1; k++){
+		int thisbright = qsuba(cubicwave8((k * xscale) + thisphase), yscale);
+		leds[k] = CHSV(currentHue, 255, xdist);
+		leds[k] += ColorFromPalette(currentPalette, thisIndex, thisbright, currentBlending);
+		thisIndex += 3;
+	}
+
+	currentHue++;
+
+	glitter(arrayAverage/2);
+
 }
 
 // SOUND PIXEL /////////////////////////////////////////////////////////////////
