@@ -123,6 +123,46 @@ BlynkParamAllocated ledGroupsList(64);
 
 
 ////////////////////////////////////////////////////////////////////////////////
+//EFFECT-SPECIFIC GLOBAL VARIABLES                                            //
+////////////////////////////////////////////////////////////////////////////////
+// MIC READING /////////////////////////////////////////////////////////////////
+int sampleArray[SOUNDSAMPLES];			//An array to store previously read mic values
+
+bool peakOccurred 		= false;		//True = a local peak ocurred
+
+uint8_t overshootLeds 	= NUMLEDS + 2; 	//Allow effect to overshoot the LED strip
+uint8_t sampleNumber 	= 0;			//Location in sampleArray to iterate over
+
+uint16_t currentSample 	= 0; 			//Most current value read from the mic
+uint16_t previousSample = 0;			//Previous value read from the mic
+uint16_t dampSample 	= 0;			//Dampened value for currentSample to prevent twitchy look
+uint16_t minSoundLevel 	= 0;			//Minimum of the values stored in sampleArray
+uint16_t maxSoundLevel 	= 0;			//Maximum of the values stored in sampleArray
+uint16_t dampMin 		= 0;			//Dampened value of minSoundLevel to prevent twitchy look
+uint16_t dampMax 		= 0;			//Dampened value of maxSoundLevel to prevent twitchy look
+uint16_t arraySum		= 0;			//Keep a sum of the values stored in sampleArray
+uint16_t arrayAverage	= 0;			//Keep an average of the values stored in sampleArray
+
+// EFFECTS /////////////////////////////////////////////////////////////////////
+#define qsubd(x, b) ((x>b)?b:0)			//Digital unsigned subtraction macro
+#define qsuba(x, b) ((x>b)?x-b:0)		//Analog unsigned subtracton macro
+
+uint8_t maxChanges = 24;				//Maximum blending steps per iteration (less is smoother)
+uint8_t timeval = 20;					//Time between calls of the effect function
+
+int16_t xdist;							//Random number for noise generator
+int16_t ydist;							//Random number for noise generator
+uint16_t xscale = 30;					//FIXIT comment here explaining purpose
+uint16_t yscale = 30;					//FIXIT comment here explaining pirpose
+
+CRGBPalette16 currentPalette;			//Used in blending functions
+CRGBPalette16 targetPalette;			//Used in blending functions
+TBlendType currentBlending;				//Used in blending functions
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 //TIME FUNCTIONS                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 void getMyTime(){
@@ -830,23 +870,6 @@ void ws2812fxImplementer(){
 }
 
 // MIC READING /////////////////////////////////////////////////////////////////
-int sampleArray[SOUNDSAMPLES];			//An array to store previously read mic values
-
-bool peakOccurred 		= false;		//True = a local peak ocurred
-
-uint8_t overshootLeds 	= NUMLEDS + 2; 	//Allow effect to overshoot the LED strip
-uint8_t sampleNumber 	= 0;			//Location in sampleArray to iterate over
-
-uint16_t currentSample 	= 0; 			//Most current value read from the mic
-uint16_t previousSample = 0;			//Previous value read from the mic
-uint16_t dampSample 	= 0;			//Dampened value for currentSample to prevent twitchy look
-uint16_t minSoundLevel 	= 0;			//Minimum of the values stored in sampleArray
-uint16_t maxSoundLevel 	= 0;			//Maximum of the values stored in sampleArray
-uint16_t dampMin 		= 0;			//Dampened value of minSoundLevel to prevent twitchy look
-uint16_t dampMax 		= 0;			//Dampened value of maxSoundLevel to prevent twitchy look
-uint16_t arraySum		= 0;			//Keep a sum of the values stored in sampleArray
-uint16_t arrayAverage	= 0;			//Keep an average of the values stored in sampleArray
-
 void soundmems(){
 	
 	//Read current mic value and append it to the end of the array. Iterate
@@ -908,30 +931,6 @@ void soundmems(){
 	//Uncomment if you need raw values of mic readings printed to serial.
 	DEBUG_PRINTLN(String("Current Sample: ") + currentSample + String(", Dampened: ") + dampSample);
 }
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-//EFFECT-SPECIFIC GLOBAL VARIABLES                                            //
-////////////////////////////////////////////////////////////////////////////////
-#define qsubd(x, b) ((x>b)?b:0)
-#define qsuba(x, b) ((x>b)?x-b:0)
-
-int16_t xdist;					//(soundFillNoise)
-int16_t ydist;					//(soundFillNoise)
-
-uint8_t maxChanges = 24;		//(soundFillNoise)
-uint8_t currentHue = 0;			//(soundJuggle, soundMatrix, soundSineWave)
-
-uint16_t xscale = 30;			//(soundBracelet, soundFillNoise, soundNoiseFire, soundSineWave)
-uint16_t yscale = 30;			//(soundBracelet, soundFillNoise, soundNoiseFire, soundSineWave)
-
-int thistime = 20;				//(soundJuggle, soundSineWave)
-
-CRGBPalette16 currentPalette;	//Used in a lot of effects
-CRGBPalette16 targetPalette;	//Used in a lot of effects
-TBlendType currentBlending;		//Used in a lot of effects
 
 
 
