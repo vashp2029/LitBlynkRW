@@ -1016,13 +1016,12 @@ void soundBracelet(){
 
 		xscale = 0;					//Length of the portion of strip to light up
 		yscale = 0;					//Location of the peak dot
+		timeval = 20;
 	}
 
 	uint16_t peakCount 		= 0;	//Keep a count of frames since peak was drawn
 	uint16_t peakFallRate 	= 10;	//Number of frames until peak starts falling
 
-	soundmems();
-	
 	//Scale the difference between the dampened current sample and the dampened minimum
 	//to the difference between the dampened maximum and dampened minimum.
 	xscale = overshootLeds * (dampSample - dampMin)/(long)(dampMax - dampMin);
