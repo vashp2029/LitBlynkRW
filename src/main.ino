@@ -770,21 +770,42 @@ void loop(){
 		}
 
 		//If a sound-reactive effect is selected, run soundmems to read microphone
-		//before going into the effect function to react.
+		//before going into the effect function to react. This portion is just lifted from
+		//Atuline's soundmems_demo repo.
 		else if(selectedSoundEffect != 0){
-			switch(selectedSoundEffect){
-				case 1:		soundBracelet();		break;
-				case 2:		soundFillNoise();		break;
-				case 3:		soundJuggle();			break;
-				case 4:		soundMatrix();			break;
-				case 5:		soundFire();			break;
-				case 6:		soundSineWave();		break;
-				case 7:		soundPixel();			break;
-				case 8:		soundPlasma();			break;
-				case 9:		soundRainbowBit();		break;
-				case 10:	soundRainbowGradient();	break;
-				case 11:	soundRipple();			break;
+			soundmems();
+
+			EVERY_N_MILLISECONDS(20){
+				maxChanges = 24;
+				nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
 			}
+
+			EVERY_N_MILLIS_I(thisTimer, timeval){
+				thisTimer.setPeriod(timeval);
+				switch(selectedSoundEffect){
+					case 1:		soundBracelet();		break;
+					case 2:		soundFillNoise();		break;
+					case 3:		soundJuggle();			break;
+					case 4:		soundMatrix();			break;
+					case 5:		soundFire();			break;
+					case 6:		soundSineWave();		break;
+					case 7:		soundPixel();			break;
+					case 8:		soundPlasma();			break;
+					case 9:		soundRainbowBit();		break;
+					case 10:	soundRainbowGradient();	break;
+					case 11:	soundRipple();			break;
+				}
+			}
+
+			EVERY_N_SECONDS(5){
+				uint8_t baseclr = random8();
+				targetPalette = CRGBPalette16(	CHSV(baseclr, 255, random8(128,255)),CHSV(baseclr+128, 255, random8(128,255)),
+												CHSV(baseclr + random8(16), 192,
+												random8(128,255)), CHSV(baseclr + random8(16), 255, random8(128,255)));
+			}
+
+			fastLedImplementer();
+
 		}
 	}
 
@@ -983,6 +1004,7 @@ void sinelon(){}
 ////////////////////////////////////////////////////////////////////////////////
 //FASTLED SOUND REACTIVE EFFECT FUNCTIONS                                     //
 ////////////////////////////////////////////////////////////////////////////////
+//FIXIT Need to alter this to work with the rest of Atuline's framwork
 // SOUND BRACELET //////////////////////////////////////////////////////////////
 void soundBracelet(){
 	if(firstRun == true){
@@ -1043,97 +1065,45 @@ void soundFillNoise(){
 		xdist = 0;
 		ydist = 0;
 		maxChanges = 24;
-
+		timeval = 40;
 		xscale = 30;
 		yscale = 30;
 	}
 
-	soundmems();
+	if(arrayAverage > NUMLEDS) arrayAverage = NUMLEDS;
 
-	currentPalette = OceanColors_p;
-	targetPalette = LavaColors_p;
-	currentBlending = LINEARBLEND;
-
-	EVERY_N_MILLISECONDS(10){
-		//Blend the current palette into the target palette iterating maxChanges times.
-		nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
-
-		//If the average sound value is greater than the number of LEDs, set it equal
-		//to the number of LEDs so we're only lighting what we have.
-		if(arrayAverage > NUMLEDS) arrayAverage = NUMLEDS;
-
-		//This makes the wideness of the section of LEDs that lights up scale based on
-		//the value of the average sound and the number of LEDs. 
-		for(int i = (NUMLEDS - arrayAverage)/2; i < (NUMLEDS + arrayAverage)/2; i++){
-			uint8_t index = inoise8(i * arrayAverage + xdist, i * arrayAverage + ydist);
-
-			leds[i] = ColorFromPalette(currentPalette, index, arrayAverage, currentBlending);
-		}
-
-		//Generate some random numbers.
-		xdist = xdist + beatsin8(5, 0, 3);
-		ydist = ydist + beatsin8(4, 0, 3);
-
-		//Dim all the LEDs by 1. If a sound is not heard on the next loop, this will dim again
-		//and so on until LEDs are off.
-		fadeToBlackBy(leds, NUMLEDS, 1);
-
-		waveFromMiddle();
+	for(int i = (NUMLEDS - arrayAverage/2)/2; i < (NUMLEDS + arrayAverage/2)/2; i++){
+		uint8_t index = inoise8(i * arrayAverage + xdist, ydist + i * arrayAverage);
+		leds[i] = ColorFromPalette(currentPalette, index, arrayAverage, LINEARBLEND);
 	}
 
-	EVERY_N_MILLISECONDS(5){
-		//Every 5 seconds, change the targetPalette to a randomly generated palette.
-		targetPalette = CRGBPalette16(	CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)),
-										CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
-	}
+	xdist = ydist + beatsin8(5, 0, 3);
+	ydist = ydist + beatsin8(4, 0, 3);
 
-	fastLedImplementer();
+	glitter(arrayAverage/2);
+
+	waveFromMiddle();
+
+	fadeToBlackBy(leds + NUMLEDS/2 - 1, 2, 128);
 }
 
 // SOUND JUGGLE ////////////////////////////////////////////////////////////////
-//FIXIT Doesn't work.
 void soundJuggle(){
 	if(firstRun == true){
-		firstRun == false;
-		currentHue = 0;
-		thistime = 20;
+		firstRun = false;
+
 	}
 
-	soundmems();
-
-	currentHue = currentHue + 4;
-
-	fadeToBlackBy(leds, NUMLEDS, 12);
-
-	leds[beatsin16(thistime, 0, NUMLEDS - 1, 0, 0)] += ColorFromPalette(currentPalette, currentHue, arrayAverage, currentBlending);
-  	leds[beatsin16(thistime - 3, 0, NUMLEDS - 1, 0, 0)] += ColorFromPalette(currentPalette, currentHue, arrayAverage, currentBlending);
-
-  	EVERY_N_MILLISECONDS(250){
-  		thistime = arrayAverage/2;
-  	}
-
-  	glitter(arrayAverage/2);
-
-  	fastLedImplementer();
 }
 
 // SOUND MATRIX ////////////////////////////////////////////////////////////////
 //FIXIT reacts to sound but colors kind of suck.
 void soundMatrix(){
 	if(firstRun == true){
-		firstRun == false;
-		currentHue = 0;
+		firstRun = false;
+
 	}
 
-	soundmems();
-
-	leds[0] = ColorFromPalette(currentPalette, currentHue++, arrayAverage, currentBlending);
-
-	for(int i = NUMLEDS - 1; i > 0; i--) leds[i] = leds[i - 1];
-
-	glitter(arrayAverage/2);
-
-	fastLedImplementer();
 }
 
 // SOUND FIRE //////////////////////////////////////////////////////////////////
@@ -1142,28 +1112,8 @@ void soundFire(){
 	if(firstRun == true){
 		firstRun = false;
 
-		xscale = 20;		//Distance between lit sections
-		yscale = 3;			//Speed that lit sections move
-
-		currentBlending = NOBLEND;
 	}
 
-	uint8_t index = 0;
-
-	soundmems();
-
-	currentPalette = CRGBPalette16(	CHSV(0,255,2), CHSV(0,255,4), CHSV(0,255,8), CHSV(0, 255, 8),
-									CHSV(0, 255, 16), CRGB::Red, CRGB::Red, CRGB::Red,
-									CRGB::DarkOrange, CRGB::DarkOrange, CRGB::Orange, CRGB::Orange,
-									CRGB::Yellow, CRGB::Orange, CRGB::Yellow, CRGB::Yellow);
-
-	for(int i = 0; i < NUMLEDS; i++) {
-    	index = inoise8(i*xscale,currentMillis*yscale*NUMLEDS/255);
-    	index = (255 - i*256/NUMLEDS) * index/128;
-    	leds[i] = ColorFromPalette(currentPalette, index, arrayAverage, currentBlending);
-  	}  
-
-	fastLedImplementer();
 }
 
 // SOUND SINE WAVE /////////////////////////////////////////////////////////////
@@ -1171,54 +1121,17 @@ void soundSineWave(){
 	if(firstRun == true){
 		firstRun = false;
 
-		maxChanges = 24;
-
-		currentPalette = OceanColors_p;
-		targetPalette = PartyColors_p;
-		currentBlending = LINEARBLEND;
 	}
 
-	EVERY_N_SECONDS(5){
-		for(int i = 0; i < 16; i++){
-			targetPalette[i] = CHSV(random8(), 255, 255);
-		}
-	}
-
-	EVERY_N_MILLISECONDS(100){
-		nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
-	}
-
-	EVERY_N_MILLIS_I(thistimer, 20){
-		uint8_t timeval = beatsin8(10, 20, 50);
-		thistimer.setPeriod(timeval);
-		fadeToBlackBy(leds, NUMLEDS, 16);
-
-		waveFromMiddle();
-		soundmems();
-	}
-
-	fastLedImplementer();
 }
 
 // SOUND PIXEL /////////////////////////////////////////////////////////////////
 void soundPixel(){
 	if(firstRun == true){
 		firstRun = false;
+
 	}
 
-	static uint16_t currentLed;		//Keep count of the current LED location
-
-	soundmems();
-
-	currentLed = (currentLed + 1) % (NUMLEDS - 1);	//Cycle this function through each LED
-
-	//FIXIT Atuline's code has previousSample as the 2nd and 3rd arguments here, but his comment
-	//FIXIT implies that the third argument should be the arrayAverage, test it and change it if
-	//FIXIT need be.
-	CRGB newcolor = ColorFromPalette(currentPalette, previousSample, previousSample, currentBlending);
-	nblend(leds[currentLed], newcolor, 192);
-
-	fastLedImplementer();
 }
 
 // SOUND PLASMA ////////////////////////////////////////////////////////////////
