@@ -70,7 +70,7 @@
 
 #define DCOFFSET		300			//Offset the waveform above or below the zero line
 #define NOISE 			85			//Ambient noise in the room
-#define AMPLIFY			5			//Amplify sounds by a factor of 'x' in case casing makes things too quiet
+#define AMPLIFY			1			//Amplify sounds by a factor of 'x' in case casing makes things too quiet
 #define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
@@ -152,7 +152,8 @@ int thistime = 20;						//FIXIT comment here explinaing purpose
 uint8_t maxChanges = 24;				//Maximum blending steps per iteration (less is smoother)
 uint8_t timeval = 20;					//Time between calls of the effect function
 uint8_t currentHue = 0;					//Used when a hue needs to be rotated over time
-uint8_t thisIndex = 0;						//FIXIT comment here explaining purpose
+uint8_t thisIndex = 0;					//FIXIT comment here explaining purpose
+uint8_t thisSpeed = 0;					//Local effect speed (takes mapped value from animationSpeed)
 
 int16_t xdist;							//Random number for noise generator
 int16_t ydist;							//Random number for noise generator
@@ -954,7 +955,7 @@ void soundmems(){
 	previousSample = currentSample;
 
 	//Uncomment if you need raw values of mic readings printed to serial.
-	DEBUG_PRINTLN(String("Current Sample: ") + currentSample + String(", Dampened: ") + dampSample);
+	//DEBUG_PRINTLN(String("Current Sample: ") + currentSample + String(", Dampened: ") + dampSample);
 }
 
 
@@ -965,42 +966,125 @@ void soundmems(){
 ////////////////////////////////////////////////////////////////////////////////
 // LEDS OFF ////////////////////////////////////////////////////////////////////
 void ledsOff(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+
 	FastLED.clear();
 	fastLedImplementer();
 }
 
 // BEATWAVE ////////////////////////////////////////////////////////////////////
-void beatWave(){}
+//FIXIT Not displaying anything...
+void beatWave(){
+	if(firstRun == true){
+		firstRun = false;
+
+		maxChanges = 24;
+	}
+
+	thisSpeed = map(animationSpeed, 0, 255, 1, 20);
+
+	uint8_t wave1 = beatsin8(thisSpeed, 0, 255);
+	uint8_t wave2 = beatsin8(thisSpeed - 1, 0, 255);
+	uint8_t wave3 = beatsin8(thisSpeed - 2, 0, 255);
+	uint8_t wave4 = beatsin8(thisSpeed - 3, 0, 255);
+
+	for(int i = 0; i < NUMLEDS; i++){
+		leds[i] = ColorFromPalette(currentPalette, i + wave1 + wave2 + wave3 + wave4, 255, currentBlending);
+	}
+
+	EVERY_N_MILLISECONDS(100){
+		nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
+	}
+
+	EVERY_N_SECONDS(5){
+		targetPalette = CRGBPalette16(	CHSV(random8(), 255, random8(128,255)), CHSV(random8(),
+										255, random8(128,255)), CHSV(random8(), 192,
+										random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+	}
+}
 
 // BLENDWAVE ///////////////////////////////////////////////////////////////////
-void blendWave(){}
+void blendWave(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // CONFETTI ////////////////////////////////////////////////////////////////////
-void confetti(){}
+void confetti(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // DOT BEAT ////////////////////////////////////////////////////////////////////
-void dotBeat(){}
+void dotBeat(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // MIRRORED FIRE ///////////////////////////////////////////////////////////////
-void mirroredFire(){}
+void mirroredFire(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // JUGGLE //////////////////////////////////////////////////////////////////////
-void juggle(){}
+void juggle(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // LIGHTNING ///////////////////////////////////////////////////////////////////
-void lightning(){}
+void lightning(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // PLASMA //////////////////////////////////////////////////////////////////////
-void plasma(){}
+void plasma(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // RAINBOW BEAT ////////////////////////////////////////////////////////////////
-void rainbowBeat(){}
+void rainbowBeat(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // RAINBOW MARCH ///////////////////////////////////////////////////////////////
-void rainbowMarch(){}
+void rainbowMarch(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 // SINELON /////////////////////////////////////////////////////////////////////
-void sinelon(){}
+void sinelon(){
+	if(firstRun == true){
+		firstRun = false;
+
+	}
+}
 
 
 
@@ -1053,8 +1137,6 @@ void soundBracelet(){
 		if(yscale > 0) yscale--;
 		peakCount = 0;
 	}
-	
-	fastLedImplementer();
 }
 
 // SOUND FILL NOISE ////////////////////////////////////////////////////////////
@@ -1116,6 +1198,7 @@ void soundJuggle(){
 }
 
 // SOUND MATRIX ////////////////////////////////////////////////////////////////
+//FIXIT Can you have this effect start in the middle and fan out instead of side to side?
 void soundMatrix(){
 	if(firstRun == true){
 		firstRun = false;
@@ -1157,36 +1240,8 @@ void soundFire(){
 }
 
 // SOUND SINE WAVE /////////////////////////////////////////////////////////////
+//FIXIT Atuline's sine wave kept crashing so leaving this to mess with my own effect
 void soundSineWave(){
-	if(firstRun == true){
-		firstRun = false;
-
-		xscale = 32; //Atuline allfreq
-		yscale = 192; //Atuline thiscutoff
-		currentHue = 0; //Atuine bgclr
-		xdist = 10; //Atuline bgbright
-		thisIndex = 0; //Atuline colorIndex
-		timeval = 30;
-	}
-
-	static int thisphase = 0;
-
-	yscale = beatsin8(12, 64, 224);
-
-	thisphase += arrayAverage/2;
-
-	thisIndex = currentMillis >> 4;
-
-	for(int k = 0; NUMLEDS - 1; k++){
-		int thisbright = qsuba(cubicwave8((k * xscale) + thisphase), yscale);
-		leds[k] = CHSV(currentHue, 255, xdist);
-		leds[k] += ColorFromPalette(currentPalette, thisIndex, thisbright, currentBlending);
-		thisIndex += 3;
-	}
-
-	currentHue++;
-
-	glitter(arrayAverage/2);
 
 }
 
