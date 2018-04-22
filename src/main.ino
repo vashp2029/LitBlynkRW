@@ -69,7 +69,8 @@
 #define TIMEZONE		-5 			//For sunrise/sunset functions
 
 #define DCOFFSET		300			//Offset the waveform above or below the zero line
-#define NOISE 			0			//Ambient noise in the room
+#define NOISE 			85			//Ambient noise in the room
+#define AMPLIFY			1			//Amplify sounds by a factor of 'x' in case casing makes things too quiet
 #define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
@@ -850,7 +851,7 @@ void soundmems(){
 	
 	//Read current mic value and append it to the end of the array. Iterate
 	//sampleNumber to prep for adding next value to the next position in the array.
-	currentSample = abs(abs(analogRead(MICPIN) - DCOFFSET) - NOISE);
+	currentSample = AMPLIFY * abs(abs(analogRead(MICPIN) - DCOFFSET) - NOISE);
 	
 	if(currentSample < micSensitivity) currentSample = 0;
 	
@@ -905,7 +906,7 @@ void soundmems(){
 	previousSample = currentSample;
 
 	//Uncomment if you need raw values of mic readings printed to serial.
-	//DEBUG_PRINTLN(String("Current Sample: ") + currentSample + String(", Dampened: ") + dampSample);
+	DEBUG_PRINTLN(String("Current Sample: ") + currentSample + String(", Dampened: ") + dampSample);
 }
 
 
