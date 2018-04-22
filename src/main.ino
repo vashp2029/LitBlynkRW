@@ -70,7 +70,7 @@
 
 #define DCOFFSET		300			//Offset the waveform above or below the zero line
 #define NOISE 			85			//Ambient noise in the room
-#define AMPLIFY			1			//Amplify sounds by a factor of 'x' in case casing makes things too quiet
+#define AMPLIFY			5			//Amplify sounds by a factor of 'x' in case casing makes things too quiet
 #define SOUNDSAMPLES	64			//Number of sound samples to collect for analysis (more samples = smoother)
 
 
@@ -147,8 +147,12 @@ uint16_t arrayAverage	= 0;			//Keep an average of the values stored in sampleArr
 #define qsubd(x, b) ((x>b)?b:0)			//Digital unsigned subtraction macro
 #define qsuba(x, b) ((x>b)?x-b:0)		//Analog unsigned subtracton macro
 
+int thistime = 20;						//FIXIT comment here explinaing purpose
+
 uint8_t maxChanges = 24;				//Maximum blending steps per iteration (less is smoother)
 uint8_t timeval = 20;					//Time between calls of the effect function
+uint8_t currentHue = 0;					//Used when a hue needs to be rotated over time
+uint8_t thisIndex = 0;						//FIXIT comment here explaining purpose
 
 int16_t xdist;							//Random number for noise generator
 int16_t ydist;							//Random number for noise generator
@@ -1073,8 +1077,8 @@ void soundFillNoise(){
 	if(arrayAverage > NUMLEDS) arrayAverage = NUMLEDS;
 
 	for(int i = (NUMLEDS - arrayAverage/2)/2; i < (NUMLEDS + arrayAverage/2)/2; i++){
-		uint8_t index = inoise8(i * arrayAverage + xdist, ydist + i * arrayAverage);
-		leds[i] = ColorFromPalette(currentPalette, index, arrayAverage, LINEARBLEND);
+		uint8_t thisIndex = inoise8(i * arrayAverage + xdist, ydist + i * arrayAverage);
+		leds[i] = ColorFromPalette(currentPalette, thisIndex, arrayAverage, LINEARBLEND);
 	}
 
 	xdist = ydist + beatsin8(5, 0, 3);
@@ -1092,28 +1096,66 @@ void soundJuggle(){
 	if(firstRun == true){
 		firstRun = false;
 
+		currentHue = 0;
+		thistime = 20;
+		timeval = 20;
 	}
 
+	currentHue = currentHue + 4;
+
+	fadeToBlackBy(leds, NUMLEDS, 12);
+
+	leds[beatsin16(thistime, 0, NUMLEDS - 1, 0, 0)] 	+= ColorFromPalette( currentPalette, currentHue, arrayAverage, currentBlending);
+	leds[beatsin16(thistime - 3, 0, NUMLEDS - 1, 0, 0)] += ColorFromPalette( currentPalette, currentHue, arrayAverage, currentBlending);
+
+	EVERY_N_MILLISECONDS(250){
+		thistime = arrayAverage/2;
+	}
+
+	glitter(arrayAverage/2);
+
+	waveFromMiddle();
 }
 
 // SOUND MATRIX ////////////////////////////////////////////////////////////////
-//FIXIT reacts to sound but colors kind of suck.
 void soundMatrix(){
 	if(firstRun == true){
 		firstRun = false;
 
+		currentHue = 0;
+		timeval = 40;
 	}
 
+	leds[0] = ColorFromPalette(currentPalette, currentHue++, arrayAverage, LINEARBLEND);
+
+	for(int i = NUMLEDS - 1; i > 0; i--) leds[i] = leds[i-1];
+
+	glitter(arrayAverage/2);
 }
 
 // SOUND FIRE //////////////////////////////////////////////////////////////////
-//FIXIT Doesn't work.
 void soundFire(){
 	if(firstRun == true){
 		firstRun = false;
 
+		xscale = 20;
+		yscale = 3;
+		thisIndex = 0;
+		timeval = 0;
 	}
 
+	currentPalette = CRGBPalette16(	CHSV(0,255,2), CHSV(0,255,4), CHSV(0,255,8), CHSV(0, 255, 8),
+									CHSV(0, 255, 16), CRGB::Red, CRGB::Red, CRGB::Red,                                   
+									CRGB::DarkOrange,CRGB::DarkOrange, CRGB::Orange, CRGB::Orange,
+									CRGB::Yellow, CRGB::Orange, CRGB::Yellow, CRGB::Yellow);
+
+	for(int i = 0; i < NUMLEDS; i++){
+		thisIndex = inoise8(i * xscale, currentMillis * yscale * NUMLEDS/255);
+		thisIndex = (255 - i * 256/NUMLEDS) * thisIndex/128;
+		leds[i] = ColorFromPalette(currentPalette, thisIndex, arrayAverage, NOBLEND);
+	}
+
+	glitter(arrayAverage/2);
 }
 
 // SOUND SINE WAVE /////////////////////////////////////////////////////////////
@@ -1122,7 +1164,6 @@ void soundSineWave(){
 		firstRun = false;
 
 	}
-
 }
 
 // SOUND PIXEL /////////////////////////////////////////////////////////////////
@@ -1130,21 +1171,126 @@ void soundPixel(){
 	if(firstRun == true){
 		firstRun = false;
 
+		xscale = 0;
+		timeval = 0;
 	}
 
+	xscale = (xscale + 1) % (NUMLEDS - 1);
+
+	CRGB newcolor = ColorFromPalette(currentPalette, previousSample, currentSample, currentBlending);
+	nblend(leds[xscale], newcolor, 192);
+
+	glitter(arrayAverage/2);
 }
 
 // SOUND PLASMA ////////////////////////////////////////////////////////////////
-void soundPlasma(){}
+void soundPlasma(){
+	if(firstRun == true){
+		firstRun = false;
+
+		xscale = 0; 	//Atuline thisphase
+		yscale = 0; 	//Atuline thatphase
+
+		currentHue = 0; 		//Atuline thisbright
+		thisIndex = 0; 	//Atuline colorIndex
+
+		timeval = 20;
+	}
+
+	xscale += beatsin8(6, -4, 4);
+	yscale += beatsin8(7, -4, 4);
+
+	for(int k = 0; k < NUMLEDS; k++){
+		currentHue = cubicwave8((k * 8) + xscale)/2;
+		currentHue += cos8((k * 10) + yscale)/2;
+		thisIndex = currentHue;
+		currentHue = qsuba(currentHue, 255 - arrayAverage);
+
+		leds[k] = ColorFromPalette(currentPalette, thisIndex, currentHue, currentBlending);
+	}
+
+	glitter(arrayAverage/2);
+}
 
 // SOUND RAINBOW BIT ///////////////////////////////////////////////////////////
-void soundRainbowBit(){}
+void soundRainbowBit(){
+	if(firstRun == true){
+		firstRun = false;
+
+		timeval = 10;
+		currentHue = 0;
+	}
+
+	currentHue = beatsin8(17, 0, 255);
+
+	if(peakOccurred == 1){
+		fill_rainbow(leds + random8(0, NUMLEDS/2), random8(0, NUMLEDS/2), currentHue, 8);
+	}
+
+	fadeToBlackBy(leds, NUMLEDS, 40);
+
+	glitter(arrayAverage/2);
+}
 
 // SOUND RAINBOW GRADIENT //////////////////////////////////////////////////////
-void soundRainbowGradient(){}
+void soundRainbowGradient(){
+	if(firstRun == true){
+		firstRun = false;
+
+		thisIndex = 0;
+		currentPalette = PartyColors_p;
+	}
+
+	uint8_t beatA = beatsin8(17, 0, 255);
+	uint8_t beatB = beatsin8(13, 0, 255);
+	uint8_t beatC = beatsin8(11, 0, 255);
+
+	for(int i = 0; i< NUMLEDS; i++){
+		thisIndex = (beatA + beatB + beatC)/3 * i * 4/NUMLEDS;
+		leds[i] = ColorFromPalette(currentPalette, thisIndex, arrayAverage, currentBlending);
+	}
+
+	glitter(arrayAverage);
+}
 
 // SOUND RIPPLE ////////////////////////////////////////////////////////////////
-void soundRipple(){}
+void soundRipple(){
+	if(firstRun == true){
+		firstRun = false;
+
+		maxChanges = 24;	//Atuline maxsteps
+		currentHue = 0; 	//Atuline colour
+		xscale = 0;			//Atuline center
+		thistime = -1;		//Atuline step
+		timeval = 20;
+	}
+
+	if(peakOccurred == 1) thistime = -1;
+
+	fadeToBlackBy(leds, NUMLEDS, 64);
+
+	switch(thistime){
+		case -1:
+			xscale = random(NUMLEDS);
+			currentHue = (previousSample) % 255;
+			thistime = 0;
+			break;
+		case 0:
+			leds[xscale] += ColorFromPalette(currentPalette, currentHue, 255, currentBlending);
+			thistime++;
+			break;
+		case 24:
+			thistime = -1;
+			break;
+		default:
+			leds[(xscale + thistime + NUMLEDS) % NUMLEDS] += ColorFromPalette(currentPalette, currentHue, 255/thistime * 2, currentBlending);
+			leds[(xscale - thistime + NUMLEDS) % NUMLEDS] += ColorFromPalette(currentPalette, currentHue, 255/thistime * 2, currentBlending);
+			thistime++;
+			break;
+	}
+
+	glitter(arrayAverage/2);
+}
 
 
 
