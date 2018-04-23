@@ -2,32 +2,32 @@
   #define SETSPECIFIC_H
 
   #ifdef BED
-    #define SENSORNAME "Bed"
+    #define SENSORNAME "bed"
     #define NUMLEDS 150
     #define LEDGROUP 2 //LEDGROUP 1 is reserved as "global" or "all groups"
 
   #elif COUCH
-    #define SENSORNAME "Couch"
+    #define SENSORNAME "couch"
     #define NUMLEDS 150
     #define LEDGROUP 3
 
   #elif TV
-    #define SENSORNAME "TV"
+    #define SENSORNAME "tv"
     #define NUMLEDS 150
     #define LEDGROUP 4
 
   #elif TVSTAND
-    #define SENSORNAME "TV Stand"
+    #define SENSORNAME "tv-stand"
     #define NUMLEDS 150
     #define LEDGROUP 5
 
   #elif WALLDESK
-    #define SENSORNAME "Wall Desk"
+    #define SENSORNAME "wall-desk"
     #define NUMLEDS 150
     #define LEDGROUP 6
 
   #elif GLASSDESK
-    #define SENSORNAME "Glass Desk"
+    #define SENSORNAME "glass-desk"
     #define NUMLEDS 150
     #define LEDGROUP 7
 
