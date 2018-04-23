@@ -24,6 +24,8 @@
 #include "ESP8266WiFi.h"
 #include "ESP8266mDNS.h"
 #include "WiFiManager.h"
+#include "ArduinoOTA.h"
+#include "ESP8266HTTPUpdateServer.h"
 #include "BlynkSimpleEsp8266.h"
 #include "TimeLib.h"
 #include "Dusk2Dawn.h"
@@ -40,6 +42,8 @@
 //CONFIG                                                                      //
 ////////////////////////////////////////////////////////////////////////////////
 #define BLYNKAUTH		"48acb8cd05e645eebdef6d873f4e2262"
+
+#define OTAPORT			8266		//Port for OTA updates
 
 #define GROUPPIN		V0 			//Select LED group to command individually
 #define SWITCHPIN 		V1 			//On/off switch
@@ -109,6 +113,8 @@ WidgetRTC clock;
 BlynkTimer updateTime;
 Dusk2Dawn atlantaSun(LATITUDE, LONGITUDE, TIMEZONE);
 WiFiManager wifiManager;
+ESP8266WebServer httpServer(80);
+ESP8266HTTPUpdateServer httpUpdater;
 struct CRGB leds[NUMLEDS];
 CRGB currentRGB(currentRed, currentGreen, currentBlue);
 WS2812FX ws2812fx = WS2812FX(NUMLEDS, DATAPIN, NEO_GRB + NEO_KHZ800);
@@ -644,6 +650,33 @@ void setupWiFi(){
 	DEBUG_PRINTLN(WiFi.localIP());
 }
 
+void setupOta(){
+	ArduinoOTA.setPort(OTAPORT);
+	ArduinoOTA.setHostname(SENSORNAME);
+	ArduinoOTA.onStart([](){DEBUG_PRINTLN("Starting OTA...");});
+	ArduinoOTA.onEnd([](){DEBUG_PRINTLN("Completed OTA...");});
+
+	ArduinoOTA.onError([](ota_error_t error){
+		DEBUG_PRINT("Error[%u]: ");
+		DEBUG_PRINTLN(error);
+
+		if (error == OTA_AUTH_ERROR) DEBUG_PRINTLN("Auth Failed");
+		else if (error == OTA_BEGIN_ERROR) DEBUG_PRINTLN("Begin Failed");
+		else if (error == OTA_CONNECT_ERROR) DEBUG_PRINTLN("Connect Failed");
+		else if (error == OTA_RECEIVE_ERROR) DEBUG_PRINTLN("Receive Failed");
+		else if (error == OTA_END_ERROR) DEBUG_PRINTLN("End Failed");
+		});
+
+	ArduinoOTA.begin();
+
+	MDNS.begin(SENSORNAME);
+	httpUpdater.setup(&httpServer);
+	httpServer.begin();
+	MDNS.addService("http", "tcp", 80);
+
+	DEBUG_PRINTLN(String("Now open http://") + SENSORNAME + String(".local/update in your browser or \n"));
+}
+
 void blynkSlowSync(){
 	//If you use a vanilla Blynk.syncAll() function here, the ESP may crash
 	//because of the flood of values. This function iterates from 0 to the
@@ -707,6 +740,7 @@ void setup(){
 
 	//Only setup everything else if the WiFi connects.
 	if(WiFi.status() == WL_CONNECTED){
+		setupOta();
 		populateLists();
 		setupLeds();
 		setupBlynk();
@@ -716,6 +750,8 @@ void setup(){
 
 
 void loop(){
+	ArduinoOTA.handle();
+	httpServer.handleClient();
 	Blynk.run();
 	updateTime.run();
 	currentMillis = millis();
