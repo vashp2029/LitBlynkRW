@@ -154,18 +154,27 @@ uint16_t arrayAverage	= 0;			//Keep an average of the values stored in sampleArr
 #define qsuba(x, b) ((x>b)?x-b:0)		//Analog unsigned subtracton macro
 
 int thistime = 20;						//FIXIT comment here explinaing purpose
+int currentHue = 0;						//Used when a hue needs to be rotated over time
+int randomHue = 0;						//Used to generate ranomd values for next hue
 
+uint8_t thisFade = 0;					//Speed of fading out
+uint8_t thisIncrement = 0;				//Increment the hue by a certain amount
+uint8_t thisSaturation = 0;				//Saturation
+uint8_t thisBrightness = 0;				//Brightness
+uint8_t thisDelay = 0;					//In case an effect needs a delay
 uint8_t maxChanges = 24;				//Maximum blending steps per iteration (less is smoother)
 uint8_t timeval = 20;					//Time between calls of the effect function
-uint8_t currentHue = 0;					//Used when a hue needs to be rotated over time
 uint8_t thisIndex = 0;					//FIXIT comment here explaining purpose
 uint8_t thisSpeed = 0;					//Local effect speed (takes mapped value from animationSpeed)
 
 int16_t xdist;							//Random number for noise generator
 int16_t ydist;							//Random number for noise generator
+
 uint16_t xscale = 30;					//FIXIT comment here explaining purpose
 uint16_t yscale = 30;					//FIXIT comment here explaining pirpose
 
+CRGB currentGradient;					//Used in blending functions
+CRGB targetGradient;					//Used in blending functions
 CRGBPalette16 currentPalette;			//Used in blending functions
 CRGBPalette16 targetPalette;			//Used in blending functions
 TBlendType currentBlending;				//Used in blending functions
@@ -554,8 +563,8 @@ void populateLists(){
 	effectsList.add("Sun");
 	effectsList.add("Beatwave");
 	effectsList.add("Blendwave");
-	effectsList.add("Dotbeat");
 	effectsList.add("Confetti");
+	effectsList.add("Dotbeat");
 	effectsList.add("Mirrored Fire");
 	effectsList.add("Juggle");
 	effectsList.add("Lightning");
@@ -808,6 +817,8 @@ void loop(){
 				case 12:	sinelon();				break;
 				default:	ws2812fxImplementer();	break;
 			}
+
+			fastLedImplementer();
 		}
 
 		//If a sound-reactive effect is selected, run soundmems to read microphone
@@ -1047,7 +1058,24 @@ void blendWave(){
 	if(firstRun == true){
 		firstRun = false;
 
+		xdist = 0;				//Atuline loc1
+		ydist = 0;				//Atuline loc2
+		xscale = 0;				//Atuline ran1
+		yscale = 0;				//Atuline ran2
+
+		currentGradient = 0; 	//Atuline clr1
+		targetGradient = 0;		//Atuline clr2
+
+		thisSpeed = beatsin8(map(animationSpeed, 0, 255, 0, 12), 0, 255);
 	}
+
+	currentGradient = blend(CHSV(beatsin8(3,0,255),255,255), CHSV(beatsin8(4,0,255),255,255), thisSpeed);
+	targetGradient = blend(CHSV(beatsin8(4,0,255),255,255), CHSV(beatsin8(3,0,255),255,255), thisSpeed);
+
+	xdist = beatsin8(10, 0, NUMLEDS - 1);
+
+	fill_gradient_RGB(leds, 0, targetGradient, xdist, currentGradient);
+	fill_gradient_RGB(leds, xdist, targetGradient, NUMLEDS - 1, currentGradient);
 }
 
 // CONFETTI ////////////////////////////////////////////////////////////////////
@@ -1055,6 +1083,30 @@ void confetti(){
 	if(firstRun == true){
 		firstRun = false;
 
+		currentHue = 50;		//Atuline thishue
+		randomHue = 256;		//Atuline huediff
+		thisFade = 8;			//Atuline thisfade
+		thisIncrement = 1;		//Atuline thisinc
+		thisSaturation = 100;	//Atuline thissat
+		thisBrightness = 255;	//Atuline thisbri
+		thisDelay = 5;			//Atuline thisdelay
+
+		maxChanges = 24;
+
+		currentBlending = LINEARBLEND;
+	}
+
+	changeMe();
+
+	EVERY_N_MILLISECONDS(100){
+		nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
+	}
+
+	EVERY_N_MILLISECONDS(thisDelay){
+		fadeToBlackBy(leds, NUMLEDS, thisFade);
+		int pos = random16(NUMLEDS);
+		leds[pos] = ColorFromPalette(currentPalette, currentHue + random16(randomHue)/4, thisBrightness, currentBlending);
+		currentHue = currentHue + thisIncrement;
 	}
 }
 
@@ -1420,6 +1472,7 @@ void glitter(fract8 chanceOfGlitter){
 	}
 }
 
+// CENTER EFFECT ///////////////////////////////////////////////////////////////
 void waveFromMiddle(){
 	leds[NUMLEDS/2] = ColorFromPalette(currentPalette, currentSample, currentSample * 2, currentBlending);
 
@@ -1431,5 +1484,24 @@ void waveFromMiddle(){
 	//Shift all pixels before the middle pixel towards the starting pixel.
 	for(uint8_t i = 0; i < NUMLEDS/2; i++){
 		leds[i] = leds[i + 1];
+	}
+}
+
+// TIME BASED PALETTE UPDATER //////////////////////////////////////////////////
+void changeMe(){
+	//FIXIT this doesn't really change speed (look at Confetti to test)
+	thisSpeed = 51 - map(animationSpeed, 0, 255, 0, 50);
+
+	uint8_t secondHand = (currentMillis/1000) % thisSpeed;
+	static uint8_t previousSecond = 99;
+
+	if(previousSecond != secondHand){
+		previousSecond = secondHand;
+		switch(secondHand){
+			case 0: targetPalette = OceanColors_p; thisIncrement=1; currentHue=192; thisSaturation=255; thisFade=2; randomHue=255; break;
+			case 5: targetPalette = LavaColors_p; thisIncrement=2; currentHue=128; thisFade=8; randomHue=64; break;
+			case 10: targetPalette = ForestColors_p; thisIncrement=1; currentHue=random16(255); thisFade=1; randomHue=16; break;
+			case 15: break;
+		}
 	}
 }
